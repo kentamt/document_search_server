@@ -17,7 +17,7 @@ import pandas as pd
 
 # Natural Language Processing Libraries
 import gensim
-from gensim import similarities
+from gensim import similarities     
 import nltk
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
@@ -61,7 +61,7 @@ class TopicModel:
         """
         function for test
         """
-        num_docs = 10  # how many documents to use
+        num_docs = 100  # how many documents to use
 
         self.docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
 
@@ -70,21 +70,6 @@ class TopicModel:
 
         self.dictionary = gensim.corpora.Dictionary(self.texts)
         self.corpus = [self.dictionary.doc2bow(text) for text in self.texts]
-
-    # def split_test_corpus(self, ratio):
-    #     """
-    #     TODO: randomize
-    #     TODO: throw exception
-    #     """
-    #     if 0 < ratio < 1:
-    #         printf("ratio must be 0 to 1")
-    #         return None, None
-        
-    #     test_size = int(len(self.corpus) * ratio)
-    #     test_corpus = self.corpus[:test_size]
-    #     train_corpus = self.corpus[test_size:]
-
-    #     return train_corpus, test_corpus
 
     def load_nltk_data(self):
         """
@@ -171,12 +156,12 @@ class TopicModel:
         for t in self.lda.get_topic_terms(topic_id):
             print(" - {}: {}".format(self.dictionary[t[0]], t[1]))
 
-    def calc_topic_distribution(self, doc):
+    def calc_topic_distribution_from_doc(self, doc):
         test_corpus = self.create_corpus_from_doc(doc)
         return sorted(self.lda.get_document_topics(test_corpus), key=lambda t:t[1], reverse=True)
 
     def disp_topic_distribution(self, doc):
-        for t in self.calc_topic_distribution(doc):
+        for t in self.calc_topic_distribution_from_doc(doc):
             print("Topic {}: {}".format(t[0], t[1]))
 
     def upadte(self, new_texts):
@@ -188,8 +173,36 @@ class TopicModel:
     def load_model(self, path):
         pass 
     
-    def recommend(self):
-        pass
+    def recommend(self, doc):
+        """
+        The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
+        For example, a corpus of one million documents would require 2GB of RAM in a 256-dimensional LSI space, when used with this class.
+        Without 2GB of free RAM, you would need to use the similarities.
+        Similarity class. This class operates in fixed memory, by splitting the index across multiple files on disk, 
+        called shards. It uses similarities.MatrixSimilarity and similarities.
+        SparseMatrixSimilarity internally, so it is still fast, although slightly more complex.
+        """ 
+
+        # train_topic_distributions = self.lda[self.corpus] # workds as well
+        train_topic_distributions = self.lda.get_document_topics(self.corpus)
+
+        # create document index for all topic distoribution        
+        doc_index = similarities.docsim.MatrixSimilarity(train_topic_distributions)
+        # doc_index = similarities.docsim.Similarity(self.lda[self.corpus])
+        
+        # TODO: impl
+        # save
+        # load
+        
+        # get topic distoribution for new document
+        topic_dist = self.calc_topic_distribution(doc)
+        # TODO: add this topic distribution to use later
+        # code
+
+        # get similarity from all training corpus
+        s = doc_index.__getitem__(topic_dist)
+        s = sorted(enumerate(s), key=lambda t: t[1], reverse=True) 
+        print(s[:10])
 
     def get_unused_texts(self):
         pass
@@ -201,6 +214,7 @@ if __name__ == "__main__":
     df = pd.read_csv("./arxivs_data.csv")
 
     topic_model = TopicModel()
+    # topic_model.load_nltk_data()
     topic_model.set_num_topics(5)
     topic_model.create_corpus_from_df(df)
     topic_model.train(num_pass=1)
@@ -208,5 +222,6 @@ if __name__ == "__main__":
     
     doc  = df.iloc[-1]["abstract"]
     topic_model.disp_topic_distribution(doc)
+    topic_model.recommend(doc)
 
     print("OK")
