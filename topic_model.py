@@ -173,6 +173,11 @@ class TopicModel:
     def load_model(self, path):
         pass 
     
+    def set_topic_distribution_index(self):
+        # create document index for all topic distribution        
+        train_topic_distributions = self.lda.get_document_topics(self.corpus)
+        self.doc_index = similarities.docsim.MatrixSimilarity(train_topic_distributions)
+
     def recommend(self, doc):
         """
         The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
@@ -182,27 +187,23 @@ class TopicModel:
         called shards. It uses similarities.MatrixSimilarity and similarities.
         SparseMatrixSimilarity internally, so it is still fast, although slightly more complex.
         """ 
-
-        # train_topic_distributions = self.lda[self.corpus] # workds as well
-        train_topic_distributions = self.lda.get_document_topics(self.corpus)
-
-        # create document index for all topic distoribution        
-        doc_index = similarities.docsim.MatrixSimilarity(train_topic_distributions)
-        # doc_index = similarities.docsim.Similarity(self.lda[self.corpus])
         
+        self.set_topic_distribution_index()
+
         # TODO: impl
         # save
         # load
         
-        # get topic distoribution for new document
-        topic_dist = self.calc_topic_distribution(doc)
+        # TODO: あらたにdocをつくるか、corpusにマージしたあと、curpus上からidで引いてくるか要検討
+        # get topic distribution for new document
+        topic_dist = self.calc_topic_distribution_from_doc(doc)
         # TODO: add this topic distribution to use later
         # code
 
         # get similarity from all training corpus
-        s = doc_index.__getitem__(topic_dist)
-        s = sorted(enumerate(s), key=lambda t: t[1], reverse=True) 
-        print(s[:10])
+        similar_corpus_id = self.doc_index.__getitem__(topic_dist)
+        similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
+        print(similar_corpus_id[:10])
 
     def get_unused_texts(self):
         pass
