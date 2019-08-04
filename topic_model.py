@@ -53,8 +53,8 @@ class TopicModel:
     
     def create_corpus_from_doc(self, doc):
 
-        text = preprocess(doc, self.stopwords)
-        corpus = dictionary.doc2bow(text)
+        text = self.preprocess(doc)
+        corpus = self.dictionary.doc2bow(text)
         return corpus
 
     def create_corpus_from_df(self, df):
@@ -64,8 +64,10 @@ class TopicModel:
         num_docs = 10  # how many documents to use
 
         self.docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
-        # self.texts = self.docs_to_texts(self.docs)
+
+        # self.texts = self.docs_to_texts(self.docs) # old ver
         self.texts = [self.preprocess(line) for line in self.docs] # remove stop words and lemmatization
+
         self.dictionary = gensim.corpora.Dictionary(self.texts)
         self.corpus = [self.dictionary.doc2bow(text) for text in self.texts]
 
@@ -169,25 +171,13 @@ class TopicModel:
         for t in self.lda.get_topic_terms(topic_id):
             print(" - {}: {}".format(self.dictionary[t[0]], t[1]))
 
+    def calc_topic_distribution(self, doc):
+        test_corpus = self.create_corpus_from_doc(doc)
+        return sorted(self.lda.get_document_topics(test_corpus), key=lambda t:t[1], reverse=True)
+
     def disp_topic_distribution(self, doc):
-        test_corpus = None
-        topics = sorted(self.lda.get_document_topics(test_corpus), key=lambda t:t[1], reverse=True)
-        for t in topics[:10]:
-            print("{}: {}".format(t[0], t[1]))
-
-    # def calc_topic_distribution(self, document):
-    #     """
-    #     calculate topic distribution for new document that is not used as train data
-    #     """
-    #     ret = lda.get_document_topics(corpus[test_id])
-    #     max_prob = -1
-    #     argmax_id = -1
-
-for topic_id, prob in ret:
-    print("Topic: {}, Probability: {}".format(topic_id, prob))
-    if prob > max_prob:
-        max_prob = prob
-        argmax_id = topic_id
+        for t in self.calc_topic_distribution(doc):
+            print("Topic {}: {}".format(t[0], t[1]))
 
     def upadte(self, new_texts):
         pass 
@@ -215,5 +205,8 @@ if __name__ == "__main__":
     topic_model.create_corpus_from_df(df)
     topic_model.train(num_pass=1)
     topic_model.disp_topic_words(1)
+    
+    doc  = df.iloc[-1]["abstract"]
+    topic_model.disp_topic_distribution(doc)
 
     print("OK")
