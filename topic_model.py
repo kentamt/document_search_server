@@ -7,12 +7,13 @@
 # @date 3-Aug. 2019
 # 
 
+import sys
 import pickle
-
 import time
 import logging
 from collections import Counter
 
+#
 import numpy as np 
 from matplotlib import pyplot as plt 
 import pandas as pd
@@ -27,9 +28,12 @@ from sklearn import datasets
 
 # Vizualization
 from wordcloud import WordCloud
+import pyLDAvis
+import pyLDAvis.gensim
 
 class TopicModel:
     def __init__(self):
+
         # member variables
         self.df = None  # DataFrame for original data ?
         
@@ -45,8 +49,12 @@ class TopicModel:
         self.unknown_docs_ids = None
         self.liked_doc_ids = None 
 
+        self.vis = None
+
         # display training logs
         logging.basicConfig(format='%(message)s', level=logging.INFO)
+
+        # pyLDAvis.enable_notebook()
 
     def get_doc(self, ind):
         return self.docs[ind]    
@@ -208,12 +216,17 @@ class TopicModel:
         plt.figure(figsize=(figx, figy))
 
         for t in range(self.lda.num_topics):
-            plt.subplot(int(self.lda.num_topics/2), 2, t+1)
+            plt.subplot(np.ceil(self.lda.num_topics/2), 2, t+1)
             x = dict(self.lda.show_topic(t,200))
             im = WordCloud().generate_from_frequencies(x)
             plt.imshow(im)
             plt.axis("off")
             plt.title("Topic #" + str(t))
+        plt.show()
+
+    def save_lda_vis_as_html(self):
+        vis = pyLDAvis.gensim.prepare(self.lda, self.corpus, self.dictionary, sort_topics=False)
+        pyLDAvis.save_html(vis, './pyldavis_output.html')
 
     def disp_topic_words(self, topic_id):
         for t in self.lda.get_topic_terms(topic_id):
@@ -293,16 +306,30 @@ if __name__ == "__main__":
 
     with open("./topic_model.pickle", "rb") as f:
         topic_model = pickle.load(f)
-        # topic_model.disp_topic_words(1)    
+        
+        # show topics
+        # topic_model.vizualize_result()
+        
+        # dump topic words
+        topic_id = 1
+        topic_model.disp_topic_words(topic_id)    
+        
+        # recomend docs
         doc  = df.iloc[-1]["abstract"]
         topic_model.disp_topic_distribution(doc)
-        # for ind in topic_model.recommend(doc):
-        #     print(topic_model.get_doc(ind))
-        #     print("---")
+        for ind in topic_model.recommend(doc):
+            print(topic_model.get_doc(ind))
+            print("---")
 
+        # add new doc and update model
         topic_model.add_doc(doc)
         topic_model.update_lda()
-    
-    
+        
+        # save LDAvis
+        topic_model.save_lda_vis_as_html()
+
+        import webbrowser
+        uri = 'file://' + '/Users/MiniBell/workspace/sazanami/pyldavis_output.html'
+        webbrowser.open_new_tab(uri)
 
     print("Done")
