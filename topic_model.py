@@ -227,6 +227,9 @@ class TopicModel:
         vis = pyLDAvis.gensim.prepare(self.lda, self.corpus, self.dictionary, sort_topics=False)
         pyLDAvis.save_html(vis, './pyldavis_output.html')
 
+    def get_topic_terms(self, topic_id):
+        return self.lda.get_topic_terms(topic_id)
+
     def disp_topic_words(self, topic_id):
         for t in self.lda.get_topic_terms(topic_id):
             print(" - {}: {}".format(self.dictionary[t[0]], t[1]))
@@ -238,6 +241,7 @@ class TopicModel:
     def disp_topic_distribution(self, doc):
         for t in self.calc_topic_distribution_from_doc(doc):
             print("Topic {}: {}".format(t[0], t[1]))
+
 
     def save_model(self, path):
         print("Not implimented yew")
@@ -318,7 +322,9 @@ if __name__ == "__main__":
         
         # recomend docs
         doc  = df.iloc[-1]["abstract"]
+        print(doc)
         topic_model.disp_topic_distribution(doc)
+
         for ind in topic_model.recommend(doc):
             print(topic_model.get_doc(ind))
             print("---")
