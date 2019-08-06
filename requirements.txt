@@ -1,0 +1,10 @@
+###### Requirements without Version Specifiers ######`
+
+###### Requirements with Version Specifiers ######`
+numpy==1.14.5
+matplotlib==3.0.3
+pandas==0.21.0
+gensim==3.7.3
+nltk==3.2.4
+wordcloud==1.5.0
+pyLDAvis==2.1.2
