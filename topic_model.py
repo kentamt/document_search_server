@@ -28,41 +28,6 @@ from sklearn import datasets
 # Vizualization
 from wordcloud import WordCloud
 
-
-class Data:
-    def __init__(self, texts, docs, corpuses, flags):
-        self.texts = texts
-        self.docs = docs
-        self.corpuses = corpuses
-        self.is_trained = flags
-
-    def get(self, ind):
-        return self.texts[ind], self.docs[ind], self.corpuses[ind], self.is_trained[ind]
-
-    def get_doc(self, ind):
-        return self.docs[ind]
-
-    def get_text(self, ind):
-        return self.texts[ind]
-
-    def get_corpus(self, ind):
-        return self.corpuses[ind]
-
-    def get_is_trained(self, ind):
-        return self.is_trained[ind]
-
-    def add(self, text, doc, corpus, flag):
-        self.docs.append(doc)
-        self.texts.append(text)
-        self.corpuses.append(corpus)
-        self.is_trained.append(flag)
-
-    def set_trained(self, ind):
-        self.is_trained[ind] = True
-
-    def reset_trained(self, ind):
-        self.is_trained[ind] = False
-
 class TopicModel:
     def __init__(self):
         # member variables
@@ -87,6 +52,8 @@ class TopicModel:
         return self.docs[ind]    
 
     def add_doc(self, doc):
+        """
+        """
         text = self.preprocess(doc)
         curp = self.dictionary.doc2bow(text) # 辞書は学習につかう単語だけのものとする。レコメンドのときは既存の辞書をつかう
         
@@ -209,16 +176,34 @@ class TopicModel:
         )
 
         # update flags
-        self.trained_flags = [ e + True for e in self.trained_flags]
+        self.trained_flags = [ True for e in self.trained_flags]
 
         return 1
 
     def update_lda(self):
         """
         update LDA with new docs and trained 
-        """
-        pass
+        
+        ! Caution
+        ! you must use the same dictionary (mapping between words and their integer ids) for both training, updates and inference.
+        ! Which means you can update the model with new documents, but not with new word types.
 
+        ! Check out the HashDictionary class which uses the "hashing trick" to work around this limitation (but the hashing trick comes with its own caveats).
+        """
+
+        new_corpus = [e for f, e in zip(self.trained_flags, self.corpus) if not f]
+
+        # new_docs = [e for f, e in zip(self.trained_flags, self.docs) if not f]
+        # for doc in new_docs:
+        #     print(doc)
+        #     print("----")
+        
+        # update Model
+        self.lda.update(new_corpus)
+
+        # update flags
+        self.trained_flags = [True for e in self.trained_flags]
+        
     def vizualize_result(self, figx=30, figy=30):
         plt.figure(figsize=(figx, figy))
 
@@ -242,13 +227,12 @@ class TopicModel:
         for t in self.calc_topic_distribution_from_doc(doc):
             print("Topic {}: {}".format(t[0], t[1]))
 
-    def upadte(self, new_texts):
-        pass 
-    
     def save_model(self, path):
+        print("Not implimented yew")
         pass 
 
     def load_model(self, path):
+        print("Not implimented yew")
         pass 
     
     def set_topic_distribution_index(self):
@@ -258,38 +242,39 @@ class TopicModel:
 
     def recommend(self, doc, num_recommended_docs = 3):
         """
-        The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
-        For example, a corpus of one million documents would require 2GB of RAM in a 256-dimensional LSI space, when used with this class.
-        Without 2GB of free RAM, you would need to use the similarities.
-        Similarity class. This class operates in fixed memory, by splitting the index across multiple files on disk, 
-        called shards. It uses similarities.MatrixSimilarity and similarities.
-        SparseMatrixSimilarity internally, so it is still fast, although slightly more complex.
+        ! Caution
+        ! The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
+        ! For example, a corpus of one million documents would require 2GB of RAM in a 256-dimensional LSI space, when used with this class.
+        ! Without 2GB of free RAM, you would need to use the similarities.
+        ! Similarity class. This class operates in fixed memory, by splitting the index across multiple files on disk, 
+        ! called shards. It uses similarities.MatrixSimilarity and similarities.
+        ! SparseMatrixSimilarity internally, so it is still fast, although slightly more complex.
         """ 
         
+        # generate document similarity matrix and set it on memory to speed up
         self.set_topic_distribution_index()
 
-        # TODO: impl
-        # save
-        # load
-        
-        # TODO: あらたにdocをつくるか、corpusにマージしたあと、curpus上からidで引いてくるか要検討
         # get topic distribution for new document
         topic_dist = self.calc_topic_distribution_from_doc(doc)
-        # TODO: add this topic distribution to use later
-        # code
 
         # get similarity from all training corpus
         similar_corpus_id = self.doc_index.__getitem__(topic_dist)
+        
+        # sort ids by similarity
         similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
+        
         recommended_docs_ids = [ e[0] for e in similar_corpus_id[:num_recommended_docs]]
+        
         print (recommended_docs_ids)
         return recommended_docs_ids
         
 
     def get_unused_texts(self):
+        print("Not implimented yew")
         pass
 
     def get_used_texts(self):
+        print("Not implimented yew")
         pass 
 
 if __name__ == "__main__":
@@ -311,10 +296,12 @@ if __name__ == "__main__":
         # topic_model.disp_topic_words(1)    
         doc  = df.iloc[-1]["abstract"]
         topic_model.disp_topic_distribution(doc)
-        for ind in topic_model.recommend(doc):
-            print(topic_model.get_doc(ind))
-            print("---")
+        # for ind in topic_model.recommend(doc):
+        #     print(topic_model.get_doc(ind))
+        #     print("---")
 
+        topic_model.add_doc(doc)
+        topic_model.update_lda()
     
     
 
