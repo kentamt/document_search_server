@@ -2,18 +2,18 @@
 # @file topic_mode.py
 # 
 # @brief 
-#
+# 
 # @author Kenta Matsui
+# @version 0.9.0
 # @date 3-Aug. 2019
+# @copyright Copyright (c) 2019
 # 
 
-import sys
+
 import pickle
-import time
 import logging
 from collections import Counter
 
-#
 import numpy as np 
 from matplotlib import pyplot as plt 
 import pandas as pd
@@ -24,7 +24,6 @@ from gensim import similarities
 import nltk
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-from sklearn import datasets
 
 # Vizualization
 from wordcloud import WordCloud
@@ -63,7 +62,7 @@ class TopicModel:
         """
         """
         text = self.preprocess(doc)
-        curp = self.dictionary.doc2bow(text) # 辞書は学習につかう単語だけのものとする。レコメンドのときは既存の辞書をつかう
+        curp = self.dictionary.doc2bow(text)
         
         self.docs.append(doc)
         self.texts.append(text)
@@ -72,19 +71,13 @@ class TopicModel:
     
     def add_docs(self, docs):
         """
-        TODO: 複数の文献を一気に追加する
-        """
-        pass
+        """        
+        num_docs = len(docs)
+        self.docs.extend(docs)
+        self.texts.extend([self.preprocess(doc) for doc in docs]) # remove stop words and lemmatization
+        self.corpus.extend([self.dictionary.doc2bow(text) for text in self.texts])
+        self.trained_flags.extend([False] * num_docs)
 
-
-    def docs_to_texts(self, docs):
-        """
-        @param docs: [str, str, str, ..., str]
-        @return texts: [[word, word, ... , ], [],[]...,[]]
-        """
-        # return [[w for w in doc.lower().split() if w not in self.stopwords] for doc in docs]
-        return [[w for w in doc.lower().split()] for doc in docs]
-    
     def corpus_from_doc(self, doc):
 
         text = self.preprocess(doc)
@@ -93,7 +86,11 @@ class TopicModel:
 
     def update_dictionary(self, texts):
         """
-        trainingに使う単語の辞書
+        ! Caution
+        ! you must use the same dictionary (mapping between words and their integer ids) for both training, updates and inference.
+        ! Which means you can update the model with new documents, but not with new word types.
+
+        ! Check out the HashDictionary class which uses the "hashing trick" to work around this limitation (but the hashing trick comes with its own caveats).
         """
         return gensim.corpora.Dictionary(texts)        
 
@@ -106,20 +103,22 @@ class TopicModel:
 
         self.docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
 
-        # self.texts = self.docs_to_texts(self.docs) # old ver
-        self.texts = [self.preprocess(line) for line in self.docs] # remove stop words and lemmatization
+        self.texts = [self.preprocess(doc) for doc in self.docs] # remove stop words and lemmatization
         
         self.dictionary = self.update_dictionary(self.texts)
 
         self.corpus = [self.dictionary.doc2bow(text) for text in self.texts]
         self.trained_flags = [False] * num_docs
-        self.liked_doc_ids = [False] * num_docs
+        # self.liked_doc_ids = [False] * num_docs
 
     def load_nltk_data(self):
         """
-        初回起動時だけnltkのデータを読み込む。結構時間かかる
+        init nltk data. It should be done when the first time.
         """
-        nltk.download() # TODO: 人の操作が必要かも。もともとDBとかに持てないかな
+        # nltk.download() 
+        # nltk.download_shell()        
+        nltk.data.path.append("/Users/MiniBell/workspace/sazanami/nltk_data")
+        print(nltk.data.path)
 
     def _simplify(self, penn_tag):
         pre = penn_tag[0]
@@ -279,8 +278,7 @@ class TopicModel:
         recommended_docs_ids = [ e[0] for e in similar_corpus_id[:num_recommended_docs]]
         
         print (recommended_docs_ids)
-        return recommended_docs_ids
-        
+        return recommended_docs_ids  
 
     def get_unused_texts(self):
         print("Not implimented yew")
@@ -294,10 +292,13 @@ if __name__ == "__main__":
 
     use_pickle = True
 
+    # read test data
     df = pd.read_csv("./arxivs_data.csv")
 
     if not use_pickle:
         topic_model = TopicModel()
+        topic_model.load_nltk_data()
+
         topic_model.set_num_topics(5)
         topic_model.create_corpus_from_df(df)
         topic_model.train(num_pass=1)
@@ -306,9 +307,10 @@ if __name__ == "__main__":
 
     with open("./topic_model.pickle", "rb") as f:
         topic_model = pickle.load(f)
-        
+        topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
+
         # show topics
-        # topic_model.vizualize_result()
+        topic_model.vizualize_result()
         
         # dump topic words
         topic_id = 1
@@ -325,6 +327,11 @@ if __name__ == "__main__":
         topic_model.add_doc(doc)
         topic_model.update_lda()
         
+        # add new docs and update model
+        docs  = df.iloc[-5:-1]["abstract"]
+        topic_model.add_docs(docs)
+        topic_model.update_lda()
+
         # save LDAvis
         topic_model.save_lda_vis_as_html()
 
