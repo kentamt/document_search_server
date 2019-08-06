@@ -1,6 +1,9 @@
 # Sazanami
 
-Sazanami is an old word that was always used with Shiga on Lake Biwa.
+Document recommendation Web API tool.
+
+# Environment
+- python 3.5.4 
 
 # Build Docker Image
 ```
