@@ -1,5 +1,6 @@
-# sazanami
-document organizing tools development
+# Sazanami
+
+Sazanami is an old word that was always used with Shiga on Lake Biwa.
 
 # Build Docker Image
 ```
