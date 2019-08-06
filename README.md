@@ -13,5 +13,5 @@ $ docker build --tag=aaazzz/flask-uwsgi-nginx .
 $ docker run -p 80:80 aaazzz/flask-uwsgi-nginx
 
 # listen on localhost:5000
-$ docker run -p 80:80 aaazzz/flask-uwsgi-nginx
+$ docker run -p 5000:80 aaazzz/flask-uwsgi-nginx
 ```
