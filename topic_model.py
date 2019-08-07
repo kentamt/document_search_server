@@ -36,8 +36,6 @@ class TopicModel:
         # member variables
         self.df = None  # DataFrame for original data ?
         
-        self.texts = None
-        self.docs = None 
         self.corpus = None
         self.trained_flags = None
 
@@ -55,17 +53,12 @@ class TopicModel:
 
         # pyLDAvis.enable_notebook()
 
-    def get_doc(self, ind):
-        return self.docs[ind]    
-
     def add_doc(self, doc):
         """
         """
         text = self.preprocess(doc)
         curp = self.dictionary.doc2bow(text)
         
-        self.docs.append(doc)
-        self.texts.append(text)
         self.corpus.append(curp)
         self.trained_flags.append(False)
     
@@ -73,9 +66,9 @@ class TopicModel:
         """
         """        
         num_docs = len(docs)
-        self.docs.extend(docs)
-        self.texts.extend([self.preprocess(doc) for doc in docs]) # remove stop words and lemmatization
-        self.corpus.extend([self.dictionary.doc2bow(text) for text in self.texts])
+        
+        texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization
+        self.corpus.extend([self.dictionary.doc2bow(text) for text in texts])
         self.trained_flags.extend([False] * num_docs)
 
     def corpus_from_doc(self, doc):
@@ -99,15 +92,14 @@ class TopicModel:
         function for test
         TODO: use append instead of init list
         """
-        num_docs = 100  # how many documents to use
+        num_docs = 3000  # how many documents to use
+        docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
+        texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization
 
-        self.docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
+        # Create new dictionary
+        self.dictionary = self.update_dictionary(texts)
 
-        self.texts = [self.preprocess(doc) for doc in self.docs] # remove stop words and lemmatization
-        
-        self.dictionary = self.update_dictionary(self.texts)
-
-        self.corpus = [self.dictionary.doc2bow(text) for text in self.texts]
+        self.corpus = [self.dictionary.doc2bow(text) for text in texts]
         self.trained_flags = [False] * num_docs
         # self.liked_doc_ids = [False] * num_docs
 
@@ -253,8 +245,25 @@ class TopicModel:
     
     def set_topic_distribution_index(self):
         # create document index for all topic distribution        
-        train_topic_distributions = self.lda.get_document_topics(self.corpus)
-        self.doc_index = similarities.docsim.MatrixSimilarity(train_topic_distributions)
+        # self.topic_distributions = self.lda.get_document_topics(self.corpus)
+        
+        self.create_topic_distributions_from_curposes()
+        self.doc_index = similarities.docsim.MatrixSimilarity(self.topic_distributions)
+
+    def create_topic_distributions_from_curposes(self):
+        """
+        """
+        self.topic_distributions = self.lda.get_document_topics(self.corpus, minimum_probability=0)
+        all_topics_csr = gensim.matutils.corpus2csc(self.topic_distributions)
+        all_topics_numpy = all_topics_csr.T.toarray()
+
+    def push_topic_distribution(self, doc):
+        """
+        """
+        topic_dist = self.calc_topic_distribution_from_doc(doc)
+        print(topic_dist)
+        # self.topic_distributions.append(topic_dist)
+
 
     def recommend(self, doc, num_recommended_docs = 3):
         """
@@ -314,11 +323,11 @@ if __name__ == "__main__":
         topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
 
         # show topics
-        topic_model.vizualize_result()
+        # topic_model.vizualize_result()
         
         # dump topic words
-        topic_id = 1
-        topic_model.disp_topic_words(topic_id)    
+        # topic_id = 1
+        # topic_model.disp_topic_words(topic_id)    
         
         # recomend docs
         doc  = df.iloc[-1]["abstract"]
@@ -326,23 +335,32 @@ if __name__ == "__main__":
         topic_model.disp_topic_distribution(doc)
 
         for ind in topic_model.recommend(doc):
-            print(topic_model.get_doc(ind))
+            # print(topic_model.get_doc(ind))
+            print(ind)
             print("---")
 
+
+        topic_model.push_topic_distribution(doc)
+        for ind in topic_model.recommend(doc):
+            # print(topic_model.get_doc(ind))
+            print(ind)
+            print("---")
+
+
         # add new doc and update model
-        topic_model.add_doc(doc)
-        topic_model.update_lda()
+        # topic_model.add_doc(doc)
+        # topic_model.update_lda()
         
         # add new docs and update model
-        docs  = df.iloc[-5:-1]["abstract"]
-        topic_model.add_docs(docs)
-        topic_model.update_lda()
+        # docs  = df.iloc[-5:-1]["abstract"]
+        # topic_model.add_docs(docs)
+        # topic_model.update_lda()
 
         # save LDAvis
-        topic_model.save_lda_vis_as_html()
+        # topic_model.save_lda_vis_as_html()
 
-        import webbrowser
-        uri = 'file://' + '/Users/MiniBell/workspace/sazanami/pyldavis_output.html'
-        webbrowser.open_new_tab(uri)
+        # import webbrowser
+        # uri = 'file://' + '/Users/MiniBell/workspace/sazanami/pyldavis_output.html'
+        # webbrowser.open_new_tab(uri)
 
     print("Done")
