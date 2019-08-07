@@ -2,15 +2,15 @@
 
 Document recommendation Web API tool.
 
-# Environment
+## Environment
 - python 3.5.4 
 
-# Build Docker Image
+## Build Docker Image
 ```
 $ docker build --tag=aaazzz/flask-uwsgi-nginx .
 ```
 
-# Run Docker on localhost
+## Run Docker on localhost
 
 ```
 # listen on locahost:80
@@ -20,7 +20,7 @@ $ docker run -p 80:80 aaazzz/flask-uwsgi-nginx
 $ docker run -p 5000:80 aaazzz/flask-uwsgi-nginx
 ```
 
-# Web API using Flask
+## Web API using Flask
 
 For example:
 
@@ -44,7 +44,9 @@ This returns json format as below.
 }
 ```
 
-# TODO
-- 
+## TODO
+- Content-Type should be returned as response header?
+- Status Code. sucess: 200, wrong endpoint: 404, internal error: 50X
+- Add docker-compose and a container for database
 - 
 - 
