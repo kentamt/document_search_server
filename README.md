@@ -16,17 +16,14 @@ Document recommendation Web API tool.
 
 ## Build Docker Image
 ```
-$ docker build --tag=aaazzz/flask-uwsgi-nginx .
+$ docker-compose build
 ```
 
 ## Run Docker on localhost
 
 ```
-# listen on locahost:80
-$ docker run -p 80:80 aaazzz/flask-uwsgi-nginx
-
-# listen on localhost:5000
-$ docker run -p 5000:80 aaazzz/flask-uwsgi-nginx
+# listen on locahost:5000
+$ docker-compose up
 ```
 
 ## Web API using Flask

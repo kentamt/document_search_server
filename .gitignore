@@ -5,3 +5,7 @@ __pycache__
 .vscode
 .DS_Store
 nktk_data
+*code-workspaceo
+redis/
+log/
+*supervisord.*
