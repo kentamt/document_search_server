@@ -9,7 +9,7 @@ Document recommendation Web API tool.
 - recommend(doc_dir)
 - vizualize()
 - add_docs(id or doc_dir) 
-
+- optimize()
 
 ## Environment
 - python 3.5.4 
@@ -54,5 +54,5 @@ This returns json format like below.
 - Content-Type should be returned as response header?
 - Status Code. sucess: 200, wrong endpoint: 404, internal error: 50X
 - Add docker-compose and a container for database
-- 
-- 
+- Hyper parameters optimization
+- Save and load method
