@@ -2,3 +2,6 @@
 __pycache__
 *csv
 *code-workspace
+.vscode
+.DS_Store
+nktk_data
