@@ -1,4 +1,8 @@
 *pyc
 __pycache__
 *csv
-*code-workspace
+*code-workspaceo
+redis/
+logs/
+*supervisord.*
+*.log

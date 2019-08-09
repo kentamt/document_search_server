@@ -1,12 +1,11 @@
-FROM ubuntu:19.04
-MAINTAINER aaazzz "akiramazvn@gmail.com"
-
-RUN apt update && apt install -y nginx python-pip
-RUN pip install --upgrade pip && pip install uwsgi flask supervisor
+FROM python:3.5
 
 COPY . /app
-
 WORKDIR /app
+
+RUN apt update && apt install -y nginx python-pip
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
 RUN mv etc/nginx.conf /etc/nginx/nginx.conf
 RUN mv etc/uwsgi.ini /etc/uwsgi.ini
 RUN mv etc/supervisord.conf /etc/supervisord.conf

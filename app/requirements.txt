@@ -1,5 +1,8 @@
 ###### Requirements without Version Specifiers ######`
-
+flask
+redis
+uwsgi 
+supervisor 
 ###### Requirements with Version Specifiers ######`
 numpy==1.14.5
 matplotlib==3.0.3
