@@ -3,6 +3,5 @@ __pycache__
 *csv
 *code-workspaceo
 redis/
-logs/
+log/
 *supervisord.*
-*.log
