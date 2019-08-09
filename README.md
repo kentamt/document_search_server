@@ -2,6 +2,15 @@
 
 Document recommendation Web API tool.
 
+- init_corpus(db_dir)
+- set_parameters()
+- train_model()
+- update_mode()
+- recommend(doc_dir)
+- vizualize()
+- add_docs(id or doc_dir) 
+
+
 ## Environment
 - python 3.5.4 
 
@@ -29,7 +38,7 @@ $ python run_server.py
 $ curl http://0.0.0.0:5000/predict -X POST -H 'Content-Type:application/json' -d '{"feature":[1, 1, 1, 1]}'
 ```
 
-This returns json format as below.
+This returns json format like below.
 
 ```
 {
