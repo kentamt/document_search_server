@@ -2,22 +2,28 @@
 
 Document recommendation Web API tool.
 
+- init_corpus(db_dir)
+- set_parameters()
+- train_model()
+- update_mode()
+- recommend(doc_dir)
+- vizualize()
+- add_docs(id or doc_dir) 
+- optimize()
+
 ## Environment
 - python 3.5.4 
 
 ## Build Docker Image
 ```
-$ docker build --tag=aaazzz/flask-uwsgi-nginx .
+$ docker-compose build
 ```
 
 ## Run Docker on localhost
 
 ```
-# listen on locahost:80
-$ docker run -p 80:80 aaazzz/flask-uwsgi-nginx
-
-# listen on localhost:5000
-$ docker run -p 5000:80 aaazzz/flask-uwsgi-nginx
+# listen on locahost:5000
+$ docker-compose up
 ```
 
 ## Web API using Flask
@@ -29,7 +35,7 @@ $ python run_server.py
 $ curl http://0.0.0.0:5000/predict -X POST -H 'Content-Type:application/json' -d '{"feature":[1, 1, 1, 1]}'
 ```
 
-This returns json format as below.
+This returns json format like below.
 
 ```
 {
@@ -48,5 +54,5 @@ This returns json format as below.
 - Content-Type should be returned as response header?
 - Status Code. sucess: 200, wrong endpoint: 404, internal error: 50X
 - Add docker-compose and a container for database
-- 
-- 
+- Hyper parameters optimization
+- Save and load method

@@ -1,8 +1,13 @@
 *pyc
 __pycache__
 *csv
+*code-workspace
+.vscode
+.DS_Store
+nktk_data
 *code-workspaceo
 appendonly.aof
 *.log
 *supervisord.*
 *eipp.log.xz
+redis/

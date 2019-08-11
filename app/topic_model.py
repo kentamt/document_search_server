@@ -30,6 +30,7 @@ from wordcloud import WordCloud
 import pyLDAvis
 import pyLDAvis.gensim
 
+
 class TopicModel:
     def __init__(self):
 
@@ -92,7 +93,7 @@ class TopicModel:
         function for test
         TODO: use append instead of init list
         """
-        num_docs = 3000  # how many documents to use
+        num_docs = 18000  # how many documents to use
         docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
         texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization
 
@@ -257,13 +258,6 @@ class TopicModel:
         all_topics_csr = gensim.matutils.corpus2csc(self.topic_distributions)
         all_topics_numpy = all_topics_csr.T.toarray()
 
-    def push_topic_distribution(self, doc):
-        """
-        """
-        topic_dist = self.calc_topic_distribution_from_doc(doc)
-        print(topic_dist)
-        # self.topic_distributions.append(topic_dist)
-
 
     def recommend(self, doc, num_recommended_docs = 3):
         """
@@ -323,13 +317,16 @@ if __name__ == "__main__":
         topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
 
         # show topics
-        # topic_model.vizualize_result()
+        print("Show topics ==================================================")
+        topic_model.vizualize_result()
         
         # dump topic words
-        # topic_id = 1
-        # topic_model.disp_topic_words(topic_id)    
+        print("Dump topic words =============================================")
+        topic_id = 1
+        topic_model.disp_topic_words(topic_id)    
         
-        # recomend docs
+        # recommend docs
+        print("Recommend docs ===============================================")
         doc  = df.iloc[-1]["abstract"]
         print(doc)
         topic_model.disp_topic_distribution(doc)
@@ -340,27 +337,23 @@ if __name__ == "__main__":
             print("---")
 
 
-        topic_model.push_topic_distribution(doc)
-        for ind in topic_model.recommend(doc):
-            # print(topic_model.get_doc(ind))
-            print(ind)
-            print("---")
-
-
         # add new doc and update model
-        # topic_model.add_doc(doc)
-        # topic_model.update_lda()
+        print("Add doc ======================================================")
+        topic_model.add_doc(doc)
+        topic_model.update_lda()
         
         # add new docs and update model
-        # docs  = df.iloc[-5:-1]["abstract"]
-        # topic_model.add_docs(docs)
-        # topic_model.update_lda()
+        print("Add docs =====================================================")
+        docs  = df.iloc[-5:-1]["abstract"]
+        topic_model.add_docs(docs)
+        topic_model.update_lda()
 
         # save LDAvis
-        # topic_model.save_lda_vis_as_html()
+        print("Save html ====================================================")
+        topic_model.save_lda_vis_as_html()
 
-        # import webbrowser
-        # uri = 'file://' + '/Users/MiniBell/workspace/sazanami/pyldavis_output.html'
-        # webbrowser.open_new_tab(uri)
+        import webbrowser
+        uri = 'file://' + '/Users/MiniBell/workspace/sazanami/pyldavis_output.html'
+        webbrowser.open_new_tab(uri)
 
     print("Done")
