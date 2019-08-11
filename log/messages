@@ -1,0 +1,6 @@
+Aug  9 08:56:58 e8ad7a05dda7 rsyslogd:  [origin software="rsyslogd" swVersion="8.1901.0" x-pid="716" x-info="https://www.rsyslog.com"] start
+Aug  9 09:10:08 cbcb17aecd52 rsyslogd:  [origin software="rsyslogd" swVersion="8.1901.0" x-pid="740" x-info="https://www.rsyslog.com"] start
+Aug  9 09:11:56 cbcb17aecd52 root: hoge
+Aug  9 09:34:07 c28e9b06eac9 rsyslogd:  [origin software="rsyslogd" swVersion="8.1901.0" x-pid="793" x-info="https://www.rsyslog.com"] start
+Aug  9 10:05:37 c767ec0ad3ea rsyslogd:  [origin software="rsyslogd" swVersion="8.1901.0" x-pid="73" x-info="https://www.rsyslog.com"] start
+Aug  9 10:08:16 4dff42a69ae4 rsyslogd:  [origin software="rsyslogd" swVersion="8.1901.0" x-pid="74" x-info="https://www.rsyslog.com"] start

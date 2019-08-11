@@ -2,6 +2,7 @@
 __pycache__
 *csv
 *code-workspaceo
-redis/
-log/
+appendonly.aof
+*.log
 *supervisord.*
+*eipp.log.xz
