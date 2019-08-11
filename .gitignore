@@ -11,3 +11,4 @@ appendonly.aof
 *supervisord.*
 *eipp.log.xz
 redis/
+APIDOC.pdf
