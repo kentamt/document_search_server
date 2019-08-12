@@ -44,6 +44,7 @@ class TopicModel:
         
         # data
         self.corpus = None
+        self.doc_ids = None
         self.trained_flags = None
         self.train_docs_ids = None
         self.unknown_docs_ids = None
@@ -68,9 +69,6 @@ class TopicModel:
         # pyLDAvis.enable_notebook()
 
     def get_model_info(self):
-        """
-        API: GET, /model
-        """
         ret = [self.num_topics, self.num_docs, self.model_create_datetime]
         # self.perplexity # TODO
         return ret
@@ -118,7 +116,7 @@ class TopicModel:
         function for test
         TODO: use append instead of init list
         """
-        num_docs = 10000  # how many documents to use
+        num_docs = 3000  # how many documents to use
         docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
         texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization
 
@@ -129,6 +127,8 @@ class TopicModel:
         self.trained_flags = [False] * num_docs
 
         self.num_docs = num_docs
+        self.doc_ids = [e for e in df.index]
+
 
     def load_nltk_data(self):
         """
@@ -183,17 +183,19 @@ class TopicModel:
     def set_num_topics(self, num_topics):
         self.num_topics = num_topics
 
-    def train(self, eta="auto", num_pass=10):
+    def train(self, eta="auto", alpha="auto", num_pass=10):
         """
-        TODO: throw exception
+        @ret -1: error
         """        
 
         if self.corpus is None:
             print("corpus does not exist.")
             return -1
+
         if self.dictionary is None:
             print("dictionary does not exist.")
             return -1
+
         if self.num_topics is None:
             print("num topics is not difined.")
             return -1
@@ -212,7 +214,7 @@ class TopicModel:
         # set all topic distoributions
         self.set_topic_distribution_index()
 
-        # get current datetime
+        # set current datetime
         self.model_create_datetime = datetime.now()
 
         return 1
@@ -271,6 +273,9 @@ class TopicModel:
         test_corpus = self.corpus_from_doc(doc)
         return sorted(self.lda.get_document_topics(test_corpus), key=lambda t:t[1], reverse=True)
 
+    def calc_topic_distribution_from_corpus(self, corpus):
+        return sorted(self.lda.get_document_topics(corpus), key=lambda t:t[1], reverse=True)
+
     def disp_topic_distribution(self, doc):
         for t in self.calc_topic_distribution_from_doc(doc):
             print("Topic {}: {}".format(t[0], t[1]))
@@ -299,7 +304,17 @@ class TopicModel:
         # all_topics_numpy = all_topics_csr.T.toarray()
 
 
-    def recommend(self, doc, num_recommended_docs = 3):
+    def get_corpus_from_id(self, ind):
+        
+        try:
+            target_ind = self.doc_ids.index(ind)
+            ret = self.corpus[target_ind]
+        except:
+            ret = -1
+
+        return ret
+
+    def recommend_from_doc(self, doc, num_similar = 3):
         """
         ! Caution
         ! The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
@@ -309,9 +324,6 @@ class TopicModel:
         ! called shards. It uses similarities.MatrixSimilarity and similarities.
         ! SparseMatrixSimilarity internally, so it is still fast, although slightly more complex.
         """ 
-        
-        # generate document similarity matrix and set it on memory to speed up
-        # self.set_topic_distribution_index()
 
         # get topic distribution for new document
         topic_dist = self.calc_topic_distribution_from_doc(doc)
@@ -322,9 +334,41 @@ class TopicModel:
         # sort ids by similarity
         similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
         
-        recommended_docs_ids = [ e[0] for e in similar_corpus_id[:num_recommended_docs]]
+        recommended_docs_ids = [ e[0] for e in similar_corpus_id[:num_similar]]
         
         return recommended_docs_ids  
+
+    def recommend_from_id(self, ind, num_similar = 3):
+        """
+        ! Caution
+        ! The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
+        ! For example, a corpus of one million documents would require 2GB of RAM in a 256-dimensional LSI space, when used with this class.
+        ! Without 2GB of free RAM, you would need to use the similarities.
+        ! Similarity class. This class operates in fixed memory, by splitting the index across multiple files on disk, 
+        ! called shards. It uses similarities.MatrixSimilarity and similarities.
+        ! SparseMatrixSimilarity internally, so it is still fast, although slightly more complex.
+        
+        TODO: 学習データのIDを指定すると、そのIDを当然推薦してくるので、それを除くこと。
+        """ 
+        
+        # get topic distribution 
+        test_corpus = self.get_corpus_from_id(ind)
+        if test_corpus == -1:
+            print("Doc does not exist")
+            return -1
+
+        topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
+
+        # get similarity from all training corpus
+        similar_corpus_id = self.doc_index.__getitem__(topic_dist)
+
+        # sort ids by similarity
+        similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
+        
+        recommended_docs_ids = [ e[0] for e in similar_corpus_id[:num_similar]]
+        
+        return recommended_docs_ids  
+
 
     def get_unused_texts(self):
         print("Not implimented yew")
@@ -336,7 +380,7 @@ class TopicModel:
 
 if __name__ == "__main__":
 
-    use_pickle = True
+    use_pickle = False
 
     # read test data
     df = pd.read_csv("./arxivs_data.csv")
@@ -372,7 +416,8 @@ if __name__ == "__main__":
         # print(doc)
         # topic_model.disp_topic_distribution(doc)
 
-        recommended_ids = topic_model.recommend(doc)
+        # recommended_ids = topic_model.recommend_from_doc(doc)
+        recommended_ids = topic_model.recommend_from_id(1000)
         for ind in recommended_ids:
             # print(topic_model.get_doc(ind))
             print("[recommend ]" + str(ind))

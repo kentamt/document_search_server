@@ -1,27 +1,99 @@
 import pickle
 import flask
 import numpy as np
-
+import pandas as pd
 from topic_model import TopicModel
 
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
-model = None
+
+# read test data
+df = pd.read_csv("./arxivs_data.csv")
+topic_model = TopicModel()
+topic_model.load_nltk_data()
+topic_model.set_num_topics(5)
+topic_model.create_corpus_from_df(df)
+
+#### USE PICKLE #####
+# with open("./topic_model.pickle", "rb") as f:        
+#     topic_model = pickle.load(f)
+# topic_model.load_nltk_data()
 
 
-def load_model():
-    global model
-    print(" * Loading pre-trained model ...")
-    
-    model = None        
-    with open("./topic_model.pickle", "rb") as f:
-        model = pickle.load(f)
-        model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
-    print(' * Loading end')
+@app.route("/model/train", methods=["POST"])
+def model_train():
+    """
+    API
+    TODO: arguments
+    """
 
+    response = {
+        "success": False,
+        "Content-Type": "application/json"
+    }    
 
-@app.route("/predict", methods=["POST"])
-def predict():
+    print("Start training...")
+
+    # ensure an feature was properly uploaded to our endpoint
+    ret = -1
+    if flask.request.method == "POST":
+        ret = topic_model.train(num_pass=1)
+
+    print("...End training")
+    response["success"] = True
+
+    return flask.jsonify(response)
+
+@app.route("/model", methods=["GET"])
+def model_info():
+    """
+    API
+    """
+
+    response = {
+        "success": False,
+        "Content-Type": "application/json"
+    }    
+
+    # ensure an feature was properly uploaded to our endpoint
+    if flask.request.method == "GET":
+        num_topics, num_docs, model_create_datetime = topic_model.get_model_info()
+
+    response["success"] = True
+    response["num_topics"] = num_topics
+    response["num_docs"] = num_docs
+    response["model_create_datetime"] = model_create_datetime.strftime('%Y/%m/%d')
+
+    return flask.jsonify(response)
+
+@app.route("/docs/<int:ind>", methods=["GET"])
+def recommend(ind=None):
+    """
+    API
+    """
+    response = {
+        "success": False,
+        "Content-Type": "application/json"
+    }    
+
+    # ensure an feature was properly uploaded to our endpoint
+    if flask.request.method == "GET":
+        num_similar_docs = flask.request.args.get('num_similar', 3)
+        ret = topic_model.recommend_from_id(ind, num_similar = int(num_similar_docs))
+
+    if ret == -1:
+        return flask.jsonify(response)
+
+    response["success"] = True
+    response["similar_docs"] = ret    
+
+    return flask.jsonify(response)
+
+@app.route("/docs/add", methods=["POST"])
+def add_docs():
+    """
+    API
+    """
     response = {
         "success": False,
         "Content-Type": "application/json"
@@ -29,28 +101,15 @@ def predict():
 
     # ensure an feature was properly uploaded to our endpoint
     if flask.request.method == "POST":
-        if flask.request.get_json().get("feature"):
+        if flask.request.get_json().get("doc_ind"):
             # read feature from json
-            feature = flask.request.get_json().get("feature")
+            doc_ind = flask.request.get_json().get("doc_ind")
+            print("rec doc ind: " + str(doc_ind))
 
-            # preprocess for classification
-            # list  -> np.ndarray
-            feature = np.array(feature).reshape((1, -1))
-
-            doc = "across a far-reaching diversity of scientific and industrial applications, a general key problem involves relating the structure of time-series data to a meaningful outcome, such as detecting anomalous events from sensor recordings, or diagnosing patients from physiological time-series measurements like heart rate or brain activity. currently, researchers must devote considerable effort manually devising, or searching for, properties of their time series that are suitable for the particular analysis problem at hand. addressing this non-systematic and time-consuming procedure, here we introduce a new tool, hctsa, that selects interpretable and useful properties of time series automatically, by comparing implementations over 7700 time-series features drawn from diverse scientific literatures. using two exemplar biological applications, we show how hctsa allows researchers to leverage decades of time-series research to quantify and understand informative structure in their time-series data."
-            response["query"] = doc
-
-            # classify the input feature
-            response["recommend"] = model.recommend(doc)[:5]
-
-            # indicate that the request was a success
-            response["success"] = True
-
-    # return the data dictionary as a JSON response
+    response["success"] = True
     return flask.jsonify(response)
 
-
 if __name__ == "__main__":
-    load_model()
+    # load_model()
     print(" * Flask starting server...")
     app.run()
