@@ -10,6 +10,7 @@
 # 
 
 
+import time
 import pickle
 import logging
 from collections import Counter
@@ -63,6 +64,8 @@ class TopicModel:
         self.corpus.append(curp)
         self.trained_flags.append(False)
     
+        # update topic distoributions
+
     def add_docs(self, docs):
         """
         """        
@@ -71,6 +74,8 @@ class TopicModel:
         texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization
         self.corpus.extend([self.dictionary.doc2bow(text) for text in texts])
         self.trained_flags.extend([False] * num_docs)
+
+        # update topic distoributions
 
     def corpus_from_doc(self, doc):
 
@@ -93,7 +98,7 @@ class TopicModel:
         function for test
         TODO: use append instead of init list
         """
-        num_docs = 18000  # how many documents to use
+        num_docs = 10000  # how many documents to use
         docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
         texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization
 
@@ -108,10 +113,15 @@ class TopicModel:
         """
         init nltk data. It should be done when the first time.
         """
-        # nltk.download() 
+        nltk.download("stopwords") 
+        nltk.download('wordnet')
+        nltk.download('averaged_perceptron_tagger')
+        self.wn = WordNetLemmatizer()
+        # nltk.download("stopwords")         
         # nltk.download_shell()        
-        nltk.data.path.append("/Users/MiniBell/workspace/sazanami/nltk_data")
-        print(nltk.data.path)
+        # nltk.data.path.append("/Users/MiniBell/workspace/sazanami/nltk_data")
+        # print(nltk.data.path)
+        
 
     def _simplify(self, penn_tag):
         pre = penn_tag[0]
@@ -131,8 +141,8 @@ class TopicModel:
         """
         stop_words = stopwords.words('english')
         toks = gensim.utils.simple_preprocess(str(text), deacc=True)
-        wn = WordNetLemmatizer()
-        return [wn.lemmatize(tok, self._simplify(pos)) for tok, pos in nltk.pos_tag(toks) if tok not in stop_words]
+        ret = [self.wn.lemmatize(tok, self._simplify(pos)) for tok, pos in nltk.pos_tag(toks) if tok not in stop_words]
+        return ret
 
     def create_eta(self, priors, etadict, num_topics):
         """
@@ -178,6 +188,9 @@ class TopicModel:
         # update flags
         self.trained_flags = [ True for e in self.trained_flags]
 
+        # set all topic distoributions
+        self.set_topic_distribution_index()
+
         return 1
 
     def update_lda(self):
@@ -204,6 +217,9 @@ class TopicModel:
         # update flags
         self.trained_flags = [True for e in self.trained_flags]
         
+        # set all topic distoributions
+        self.set_topic_distribution_index()
+
     def vizualize_result(self, figx=30, figy=30):
         plt.figure(figsize=(figx, figy))
 
@@ -247,7 +263,7 @@ class TopicModel:
     def set_topic_distribution_index(self):
         # create document index for all topic distribution        
         # self.topic_distributions = self.lda.get_document_topics(self.corpus)
-        
+
         self.create_topic_distributions_from_curposes()
         self.doc_index = similarities.docsim.MatrixSimilarity(self.topic_distributions)
 
@@ -255,8 +271,8 @@ class TopicModel:
         """
         """
         self.topic_distributions = self.lda.get_document_topics(self.corpus, minimum_probability=0)
-        all_topics_csr = gensim.matutils.corpus2csc(self.topic_distributions)
-        all_topics_numpy = all_topics_csr.T.toarray()
+        # all_topics_csr = gensim.matutils.corpus2csc(self.topic_distributions)
+        # all_topics_numpy = all_topics_csr.T.toarray()
 
 
     def recommend(self, doc, num_recommended_docs = 3):
@@ -271,20 +287,19 @@ class TopicModel:
         """ 
         
         # generate document similarity matrix and set it on memory to speed up
-        self.set_topic_distribution_index()
+        # self.set_topic_distribution_index()
 
         # get topic distribution for new document
         topic_dist = self.calc_topic_distribution_from_doc(doc)
 
         # get similarity from all training corpus
         similar_corpus_id = self.doc_index.__getitem__(topic_dist)
-        
+
         # sort ids by similarity
         similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
         
         recommended_docs_ids = [ e[0] for e in similar_corpus_id[:num_recommended_docs]]
         
-        print (recommended_docs_ids)
         return recommended_docs_ids  
 
     def get_unused_texts(self):
@@ -308,45 +323,47 @@ if __name__ == "__main__":
 
         topic_model.set_num_topics(5)
         topic_model.create_corpus_from_df(df)
+
         topic_model.train(num_pass=1)
         with open("./topic_model.pickle", "wb") as f:
             pickle.dump(topic_model, f)
 
     with open("./topic_model.pickle", "rb") as f:
+        
         topic_model = pickle.load(f)
         topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
 
         # show topics
-        print("Show topics ==================================================")
-        topic_model.vizualize_result()
+        # print("Show topics ==================================================")
+        # topic_model.vizualize_result()
         
         # dump topic words
-        print("Dump topic words =============================================")
-        topic_id = 1
-        topic_model.disp_topic_words(topic_id)    
+        # print("Dump topic words =============================================")
+        # topic_id = 1
+        # topic_model.disp_topic_words(topic_id)    
         
         # recommend docs
         print("Recommend docs ===============================================")
         doc  = df.iloc[-1]["abstract"]
-        print(doc)
-        topic_model.disp_topic_distribution(doc)
+        # print(doc)
+        # topic_model.disp_topic_distribution(doc)
 
-        for ind in topic_model.recommend(doc):
+        recommended_ids = topic_model.recommend(doc)
+        for ind in recommended_ids:
             # print(topic_model.get_doc(ind))
-            print(ind)
-            print("---")
+            print("[recommend ]" + str(ind))
 
 
         # add new doc and update model
-        print("Add doc ======================================================")
-        topic_model.add_doc(doc)
-        topic_model.update_lda()
+        # print("Add doc ======================================================")
+        # topic_model.add_doc(doc)
+        # topic_model.update_lda()
         
         # add new docs and update model
-        print("Add docs =====================================================")
-        docs  = df.iloc[-5:-1]["abstract"]
-        topic_model.add_docs(docs)
-        topic_model.update_lda()
+        # print("Add docs =====================================================")
+        # docs  = df.iloc[-5:-1]["abstract"]
+        # topic_model.add_docs(docs)
+        # topic_model.update_lda()
 
         # save LDAvis
         print("Save html ====================================================")

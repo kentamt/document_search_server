@@ -1,7 +1,43 @@
-@startuml
+@startuml component
 
-class DataProc
+package app
 {
-    
+class gensim
+{
+
 }
+class nltk 
+{
+    +corpus.stopwords.word("english")
+    +stem.WordNetLemmatizer()
+}
+
+class pyLDAviz
+{
+}
+
+class TopicModel
+{
+    -Int num_topic
+    -Int alpha, beta
+    -Data corpus
+    -Gensim lda
+    -Bool[] trained_ids
+    +set_params(Int num_topic, Float alpha, Float beta)
+    +set_num_topics(Int num_topic)
+    +add_docs(Int[] doc_ids)
+    +train(Int num_pass, Int num_iter)
+    +update_model()
+    +Int[] recommend(int doc_id)
+    +visualize()
+    +parplexity()
+    -init_nltk()
+}
+}
+
+
+gensim --> TopicModel
+nltk --> TopicModel
+pyLDAviz --> TopicModel
+
 @enduml
