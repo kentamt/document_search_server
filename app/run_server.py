@@ -3,9 +3,11 @@ import flask
 import numpy as np
 import pandas as pd
 from topic_model import TopicModel
+from redis import Redis
 
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
+redis = Redis(host='redis', port=6379)
 
 # read test data
 df = pd.read_csv("./arxivs_data.csv")
@@ -18,6 +20,11 @@ topic_model.create_corpus_from_df(df)
 # with open("./topic_model.pickle", "rb") as f:        
 #     topic_model = pickle.load(f)
 # topic_model.load_nltk_data()
+
+@app.route('/')
+def hello():
+    redis.incr('hits')
+    return 'Hello World! I have been seen %s times.' % redis.get('hits')
 
 
 @app.route("/model/train", methods=["POST"])
