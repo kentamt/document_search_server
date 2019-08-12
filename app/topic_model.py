@@ -11,6 +11,7 @@
 
 
 import time
+from datetime import datetime
 import pickle
 import logging
 from collections import Counter
@@ -33,27 +34,46 @@ import pyLDAvis.gensim
 
 
 class TopicModel:
+    
     def __init__(self):
 
         # member variables
+        
+        # for better debug
         self.df = None  # DataFrame for original data ?
         
+        # data
         self.corpus = None
         self.trained_flags = None
-
-        self.stopwords = None # TODO: install stopwords by nltk 
-        self.lda = None
-        self.num_topics = None
         self.train_docs_ids = None
         self.unknown_docs_ids = None
         self.liked_doc_ids = None 
+        self.stopwords = None # TODO: install stopwords by nltk 
 
+        # model   
+        self.lda = None
+        
+        # model parameters
+        self.num_topics = None
+
+        # model info
+        self.model_create_datetime = None
+        self.num_docs = 0
+
+        # run options
         self.vis = None
 
         # display training logs
         logging.basicConfig(format='%(message)s', level=logging.INFO)
-
         # pyLDAvis.enable_notebook()
+
+    def get_model_info(self):
+        """
+        API: GET, /model
+        """
+        ret = [self.num_topics, self.num_docs, self.model_create_datetime]
+        # self.perplexity # TODO
+        return ret
 
     def add_doc(self, doc):
         """
@@ -64,7 +84,7 @@ class TopicModel:
         self.corpus.append(curp)
         self.trained_flags.append(False)
     
-        # update topic distoributions
+        self.num_docs += 1
 
     def add_docs(self, docs):
         """
@@ -75,7 +95,7 @@ class TopicModel:
         self.corpus.extend([self.dictionary.doc2bow(text) for text in texts])
         self.trained_flags.extend([False] * num_docs)
 
-        # update topic distoributions
+        self.num_docs += num_docs
 
     def corpus_from_doc(self, doc):
 
@@ -107,7 +127,8 @@ class TopicModel:
 
         self.corpus = [self.dictionary.doc2bow(text) for text in texts]
         self.trained_flags = [False] * num_docs
-        # self.liked_doc_ids = [False] * num_docs
+
+        self.num_docs = num_docs
 
     def load_nltk_data(self):
         """
@@ -190,6 +211,9 @@ class TopicModel:
 
         # set all topic distoributions
         self.set_topic_distribution_index()
+
+        # get current datetime
+        self.model_create_datetime = datetime.now()
 
         return 1
 
