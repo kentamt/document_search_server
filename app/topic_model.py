@@ -53,7 +53,8 @@ class TopicModel:
 
         # model   
         self.lda = None
-        
+        self.is_model_trained = False
+
         # model parameters
         self.num_topics = None
 
@@ -69,8 +70,12 @@ class TopicModel:
         # pyLDAvis.enable_notebook()
 
     def get_model_info(self):
-        ret = [self.num_topics, self.num_docs, self.model_create_datetime]
+        ret = {}
+        ret["num_topics"] = self.num_topics
+        ret["num_docs"] = self.num_docs
+        ret["date"] = self.model_create_datetime
         # self.perplexity # TODO
+
         return ret
 
     def add_doc(self, doc):
@@ -210,6 +215,7 @@ class TopicModel:
 
         # update flags
         self.trained_flags = [ True for e in self.trained_flags]
+        self.is_model_trained = True
 
         # set all topic distoributions
         self.set_topic_distribution_index()
@@ -338,7 +344,7 @@ class TopicModel:
         
         return recommended_docs_ids  
 
-    def recommend_from_id(self, ind, num_similar = 3):
+    def recommend_from_id(self, ind, num_similar_docs = 3):
         """
         ! Caution
         ! The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
@@ -351,6 +357,9 @@ class TopicModel:
         TODO: 学習データのIDを指定すると、そのIDを当然推薦してくるので、それを除くこと。
         """ 
         
+        if not self.is_model_trained:
+            return -2 # TODO: Define error codes
+
         # get topic distribution 
         test_corpus = self.get_corpus_from_id(ind)
         if test_corpus == -1:
@@ -365,10 +374,27 @@ class TopicModel:
         # sort ids by similarity
         similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
         
-        recommended_docs_ids = [ e[0] for e in similar_corpus_id[:num_similar]]
+        if num_similar_docs > self.num_docs:
+            num_similar_docs = self.num_docs
+            print("[Warn] num similar docs must be less than self.num_docs")
+        recommended_docs_ids = [ e[0] for e in similar_corpus_id[:num_similar_docs]]
         
         return recommended_docs_ids  
 
+    def calc_best_topic_from_id(self, ind):
+        if not self.is_model_trained:
+            return -2 # TODO: Define error codes
+
+        # get corpus
+        test_corpus = self.get_corpus_from_id(ind)
+        if test_corpus == -1:
+            print("Doc does not exist")
+            return -1
+
+        # get topic distribution
+        topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
+        ret = topic_dist[0][0]
+        return ret
 
     def get_unused_texts(self):
         print("Not implimented yew")
@@ -380,7 +406,7 @@ class TopicModel:
 
 if __name__ == "__main__":
 
-    use_pickle = False
+    use_pickle = True
 
     # read test data
     df = pd.read_csv("./arxivs_data.csv")
@@ -418,10 +444,16 @@ if __name__ == "__main__":
 
         # recommended_ids = topic_model.recommend_from_doc(doc)
         recommended_ids = topic_model.recommend_from_id(1000)
+        if recommended_ids == -2 or recommended_ids == -1:
+            print("error")
+            exit(-1)
+
         for ind in recommended_ids:
             # print(topic_model.get_doc(ind))
             print("[recommend ]" + str(ind))
 
+        topic_no = topic_model.calc_best_topic_from_id(1000)
+        print("topic_no: " + str(topic_no))
 
         # add new doc and update model
         # print("Add doc ======================================================")
