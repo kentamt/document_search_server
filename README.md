@@ -56,3 +56,4 @@ This returns json format like below.
 - Add docker-compose and a container for database
 - Hyper parameters optimization
 - Save and load method
+- Function for stopwords. i.e. add_stopwords(), show_stopwords()
