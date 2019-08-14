@@ -222,7 +222,8 @@ class TopicModel:
     def calc_coherence(self):
         coherence_model_lda = CoherenceModel(model=self.lda, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
         coherence_lda = coherence_model_lda.get_coherence()
-        print('\nCoherence Score: ', coherence_lda)
+        # print('\nCoherence Score: ', coherence_lda)
+        return coherence_lda
 
     def train_mallet(self, eta="auto", alpha="auto", num_pass=10):
         
