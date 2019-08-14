@@ -85,6 +85,7 @@ def load_model():
     with open("./topic_model.pickle", "rb") as f:        
         topic_model = pickle.load(f)
         topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
+        topic_model.set_topic_distribution_index() # TODO: consider where this function should be called
         response["status_code"] = 200
 
     print("Load topic model from pickle")
@@ -128,9 +129,11 @@ def model_train():
         if ret == Result.NO_CORPUS:
             response["status_code"] = 500
             response["error"] = "There is no corpus"
+        
         elif ret == Result.NO_DICTIONARY:
             response["status_code"] = 500
             response["error"] = "Dictionary must be set"
+
         elif ret == Result.NO_NUM_TOPICS: # never, but just in case
             response["status_code"] = 500
             response["error"] = "Number of topics must be set"
