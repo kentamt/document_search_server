@@ -23,6 +23,7 @@ import pandas as pd
 # Natural Language Processing Libraries
 import gensim
 from gensim import similarities     
+from gensim.test.utils import get_tmpfile, common_texts
 import nltk
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
@@ -32,6 +33,11 @@ from wordcloud import WordCloud
 import pyLDAvis
 import pyLDAvis.gensim
 
+# Profiler
+from line_profiler import LineProfiler
+
+# Local
+from error_definition import Error
 
 class TopicModel:
     
@@ -78,16 +84,33 @@ class TopicModel:
 
         return ret
 
-    def add_doc(self, doc):
+    def add_doc(self, doc, ind=None):
         """
         """
-        text = self.preprocess(doc)
-        curp = self.dictionary.doc2bow(text)
-        
-        self.corpus.append(curp)
-        self.trained_flags.append(False)
-    
-        self.num_docs += 1
+
+        # create new id
+        if ind is None:
+            ind = np.max(self.doc_ids) + 1            
+
+        # check if there is same id
+        if ind in self.doc_ids:
+            print("[Error] There is the same ID in corpus.")
+            return -1
+        else:
+            print("Add new document on corpus and topic distoribution indecies.")
+            text = self.preprocess(doc)
+            corpus = self.dictionary.doc2bow(text)
+            
+            self.corpus.append(corpus)
+            self.trained_flags.append(False)
+            self.doc_ids.append(ind)
+            self.num_docs += 1
+
+            # push topic_distoribution_index
+            topic_dist = self.lda.get_document_topics([corpus], minimum_probability=0)
+
+            self.doc_index_similarity.add_documents(topic_dist)  # add more documents in corpus
+            return 1
 
     def add_docs(self, docs):
         """
@@ -132,7 +155,7 @@ class TopicModel:
         self.trained_flags = [False] * num_docs
 
         self.num_docs = num_docs
-        self.doc_ids = [e for e in df.index]
+        self.doc_ids = [e for e in df.loc[0:num_docs].index]
 
 
     def load_nltk_data(self):
@@ -218,7 +241,9 @@ class TopicModel:
         self.is_model_trained = True
 
         # set all topic distoributions
+        self.set_topic_distribution_matrix()
         self.set_topic_distribution_index()
+        
 
         # set current datetime
         self.model_create_datetime = datetime.now()
@@ -300,7 +325,24 @@ class TopicModel:
         # self.topic_distributions = self.lda.get_document_topics(self.corpus)
 
         self.create_topic_distributions_from_curposes()
-        self.doc_index = similarities.docsim.MatrixSimilarity(self.topic_distributions)
+        index_tmpfile = get_tmpfile('index')
+        self.doc_index_similarity = similarities.Similarity(index_tmpfile, self.topic_distributions, num_features=len(self.dictionary))
+
+    def set_topic_distribution_matrix(self):
+        # create document index for all topic distribution        
+        # self.topic_distributions = self.lda.get_document_topics(self.corpus)
+
+        self.create_topic_distributions_from_curposes()
+        self.doc_mat_similarity = similarities.docsim.MatrixSimilarity(self.topic_distributions)
+
+    def set_topic_distribution_own_matrix(self):
+        # create document index for all topic distribution        
+        # self.topic_distributions = self.lda.get_document_topics(self.corpus)
+
+        # self.create_topic_distributions_from_curposes()
+        # self.doc_mat_similarity = similarities.docsim.MatrixSimilarity(self.topic_distributions)
+        pass
+    
 
     def create_topic_distributions_from_curposes(self):
         """
@@ -335,7 +377,7 @@ class TopicModel:
         topic_dist = self.calc_topic_distribution_from_doc(doc)
 
         # get similarity from all training corpus
-        similar_corpus_id = self.doc_index.__getitem__(topic_dist)
+        similar_corpus_id = self.doc_mat_similarity.__getitem__(topic_dist)
 
         # sort ids by similarity
         similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
@@ -369,7 +411,7 @@ class TopicModel:
         topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
 
         # get similarity from all training corpus
-        similar_corpus_id = self.doc_index.__getitem__(topic_dist)
+        similar_corpus_id = self.doc_mat_similarity.__getitem__(topic_dist)
 
         # sort ids by similarity
         similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
@@ -377,9 +419,49 @@ class TopicModel:
         if num_similar_docs > self.num_docs:
             num_similar_docs = self.num_docs
             print("[Warn] num similar docs must be less than self.num_docs")
-        recommended_docs_ids = [ e[0] for e in similar_corpus_id[:num_similar_docs]]
+
+        arr_ids = [ e[0] for e in similar_corpus_id[:num_similar_docs]]
+        recommended_docs_ids = [self.doc_ids[e] for e in arr_ids]
         
         return recommended_docs_ids  
+
+    def recommend_from_id_(self, ind, num_similar_docs = 3):
+        """
+        ! Caution
+        ! The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
+        ! For example, a corpus of one million documents would require 2GB of RAM in a 256-dimensional LSI space, when used with this class.
+        ! Without 2GB of free RAM, you would need to use the similarities.
+        ! Similarity class. This class operates in fixed memory, by splitting the index across multiple files on disk, 
+        ! called shards. It uses similarities.MatrixSimilarity and similarities.
+        ! SparseMatrixSimilarity internally, so it is still fast, although slightly more complex.
+        
+        TODO: 学習データのIDを指定すると、そのIDを当然推薦してくるので、それを除くこと。
+        """ 
+        
+        if not self.is_model_trained:
+            return -2 # TODO: Define error codes
+
+        # get topic distribution 
+        test_corpus = self.get_corpus_from_id(ind)
+        if test_corpus == -1:
+            print("Doc does not exist")
+            return -1
+
+        topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
+
+        # get similarity from all training corpus
+        similar_corpus_id = self.doc_index_similarity[topic_dist]
+
+        # sort ids by similarity
+        similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
+        
+        if num_similar_docs > self.num_docs:
+            num_similar_docs = self.num_docs
+            print("[Warn] num similar docs must be less than self.num_docs")
+        arr_ids = [ e[0] for e in similar_corpus_id[:num_similar_docs]]
+        recommended_docs_ids = [self.doc_ids[e] for e in arr_ids]
+
+        return recommended_docs_ids
 
     def calc_best_topic_from_id(self, ind):
         if not self.is_model_trained:
@@ -395,6 +477,7 @@ class TopicModel:
         topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
         ret = topic_dist[0][0]
         return ret
+
 
     def get_unused_texts(self):
         print("Not implimented yew")
@@ -415,15 +498,16 @@ if __name__ == "__main__":
         topic_model = TopicModel()
         topic_model.load_nltk_data()
 
-        topic_model.set_num_topics(5)
+        topic_model.set_num_topics(10)
         topic_model.create_corpus_from_df(df)
 
         topic_model.train(num_pass=1)
         with open("./topic_model.pickle", "wb") as f:
-            pickle.dump(topic_model, f)
+             pickle.dump(topic_model, f)
 
     with open("./topic_model.pickle", "rb") as f:
         
+
         topic_model = pickle.load(f)
         topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
 
@@ -438,22 +522,34 @@ if __name__ == "__main__":
         
         # recommend docs
         print("Recommend docs ===============================================")
-        doc  = df.iloc[-1]["abstract"]
-        # print(doc)
-        # topic_model.disp_topic_distribution(doc)
+        
+        ind = 12000
+        doc  = df.iloc[ind]["abstract"]
+        
+        topic_model.disp_topic_distribution(doc)
+        topic_model.add_doc(doc, ind=ind)
 
         # recommended_ids = topic_model.recommend_from_doc(doc)
-        recommended_ids = topic_model.recommend_from_id(1000)
+
+        recommended_ids = topic_model.recommend_from_id(ind, num_similar_docs=10)
         if recommended_ids == -2 or recommended_ids == -1:
             print("error")
             exit(-1)
 
-        for ind in recommended_ids:
-            # print(topic_model.get_doc(ind))
-            print("[recommend ]" + str(ind))
+        for rind in recommended_ids:
+            # print(topic_model.get_doc(rind))
+            print("[recommend ]" + str(rind))
 
-        topic_no = topic_model.calc_best_topic_from_id(1000)
-        print("topic_no: " + str(topic_no))
+        print("----")
+        recommended_ids = topic_model.recommend_from_id_(ind, num_similar_docs=10)
+        if recommended_ids == -2 or recommended_ids == -1:
+            print("error")
+            exit(-1)
+
+        for rind in recommended_ids:
+            # print(topic_model.get_doc(rind))
+            print("[recommend ]" + str(rind))
+
 
         # add new doc and update model
         # print("Add doc ======================================================")
@@ -467,11 +563,11 @@ if __name__ == "__main__":
         # topic_model.update_lda()
 
         # save LDAvis
-        print("Save html ====================================================")
-        topic_model.save_lda_vis_as_html()
+        # print("Save html ====================================================")
+        # topic_model.save_lda_vis_as_html()
 
-        import webbrowser
-        uri = 'file://' + '/Users/MiniBell/workspace/sazanami/pyldavis_output.html'
-        webbrowser.open_new_tab(uri)
+        # import webbrowser
+        # uri = 'file://' + '/Users/MiniBell/workspace/sazanami/app/pyldavis_output.html'
+        # webbrowser.open_new_tab(uri)
 
     print("Done")
