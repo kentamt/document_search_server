@@ -9,7 +9,7 @@
 # @copyright Copyright (c) 2019
 # 
 
-
+import sys
 import time
 from datetime import datetime
 import pickle
@@ -23,6 +23,7 @@ import pandas as pd
 # Natural Language Processing Libraries
 import gensim
 from gensim import similarities     
+from gensim.models import CoherenceModel
 from gensim.test.utils import get_tmpfile, common_texts
 import nltk
 from nltk.corpus import stopwords
@@ -34,14 +35,14 @@ import pyLDAvis
 import pyLDAvis.gensim
 
 # Profiler
-from line_profiler import LineProfiler
+# from line_profiler import LineProfiler
 
 # Local
 from error_definition import Result
 
 class TopicModel:
     
-    def __init__(self):
+    def __init__(self, logger_level=logging.INFO):
 
         # member variables
         
@@ -72,7 +73,8 @@ class TopicModel:
         self.vis = None
 
         # display training logs
-        logging.basicConfig(format='%(message)s', level=logging.INFO)
+        logging.basicConfig(format='%(message)s', level=logger_level)
+        
         # pyLDAvis.enable_notebook()
 
     def get_model_info(self):
@@ -104,6 +106,7 @@ class TopicModel:
             text = self.preprocess(doc)
             corpus = self.dictionary.doc2bow(text)
             
+            self.texts.append(text)
             self.corpus.append(corpus)
             self.trained_flags.append(False)
             self.doc_ids.append(ind)
@@ -151,7 +154,8 @@ class TopicModel:
         """
         num_docs = 3000  # how many documents to use
         docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
-        texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization
+        texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization 
+        self.texts = texts # NOTE: for calc coherence
 
         # Create new dictionary
         self.dictionary = self.update_dictionary(texts)
@@ -170,12 +174,7 @@ class TopicModel:
         nltk.download("stopwords") 
         nltk.download('wordnet')
         nltk.download('averaged_perceptron_tagger')
-        self.wn = WordNetLemmatizer()
-        # nltk.download("stopwords")         
-        # nltk.download_shell()        
-        # nltk.data.path.append("/Users/MiniBell/workspace/sazanami/nltk_data")
-        # print(nltk.data.path)
-        
+        self.wn = WordNetLemmatizer()        
 
     def _simplify(self, penn_tag):
         pre = penn_tag[0]
@@ -216,6 +215,59 @@ class TopicModel:
     def set_num_topics(self, num_topics):
         self.num_topics = num_topics
 
+    def calc_perplexity(self):
+        perplexity = np.exp2(-self.lda.log_perplexity(self.corpus))
+        return perplexity
+
+    def calc_coherence(self):
+        coherence_model_lda = CoherenceModel(model=self.lda, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
+        coherence_lda = coherence_model_lda.get_coherence()
+        print('\nCoherence Score: ', coherence_lda)
+
+    def train_mallet(self, eta="auto", alpha="auto", num_pass=10):
+        
+        if self.corpus is None:
+            print("corpus does not exist.")
+            return Result.NO_CORPUS
+
+        if self.dictionary is None:
+            print("dictionary does not exist.")
+            return Result.NO_DICTIONARY
+
+        if self.num_topics is None:
+            print("num topics is not difined.")
+            return Result.NO_NUM_TOPICS
+        
+        mallet_path = "./mallet-2.0.8/bin/mallet" # update this path
+        lda_mallet = gensim.models.wrappers.LdaMallet(
+            mallet_path, 
+            corpus=self.corpus,
+            num_topics=self.num_topics,
+            id2word=self.dictionary
+            # passes=num_pass # ,
+            # eta = eta,
+            # added
+            # random_state=100,
+            # update_every=1,
+            # chunksize=100,
+            # alpha='auto',
+            # per_word_topics=True
+            )
+        self.lda = gensim.models.wrappers.ldamallet.malletmodel2ldamodel(lda_mallet)
+
+        # update flags
+        self.trained_flags = [ True for e in self.trained_flags]
+        self.is_model_trained = True
+
+        # set all topic distoributions
+        self.set_topic_distribution_matrix()
+        self.set_topic_distribution_index()
+
+        # set current datetime
+        self.model_create_datetime = datetime.now()
+
+        return Result.SUCCESS
+
     def train(self, eta="auto", alpha="auto", num_pass=10):
         """
         @ret -1: error
@@ -223,7 +275,7 @@ class TopicModel:
 
         if self.corpus is None:
             print("corpus does not exist.")
-            return Result.NO_CORPUS
+            return Result.NO_CORPUS 
 
         if self.dictionary is None:
             print("dictionary does not exist.")
@@ -238,7 +290,13 @@ class TopicModel:
             num_topics=self.num_topics,
             id2word=self.dictionary,
             passes=num_pass,
-            eta = eta
+            eta = eta,
+            # added
+            random_state=100,
+            update_every=1,
+            chunksize=100,
+            alpha='auto',
+            per_word_topics=True
         )
 
         # update flags
@@ -293,8 +351,11 @@ class TopicModel:
             plt.title("Topic #" + str(t))
         plt.show()
 
-    def save_lda_vis_as_html(self):
-        vis = pyLDAvis.gensim.prepare(self.lda, self.corpus, self.dictionary, sort_topics=False)
+    def save_lda_vis_as_html(self, method=None):
+        if method is None:
+            vis = pyLDAvis.gensim.prepare(self.lda, self.corpus, self.dictionary, sort_topics=False)
+        else:
+            vis = pyLDAvis.gensim.prepare(self.lda, self.corpus, self.dictionary, mds=method, sort_topics=False)
         pyLDAvis.save_html(vis, './pyldavis_output.html')
 
     def get_topic_terms(self, topic_id):
@@ -505,13 +566,15 @@ if __name__ == "__main__":
         topic_model.set_num_topics(10)
         topic_model.create_corpus_from_df(df)
 
-        topic_model.train(num_pass=1)
+        # topic_model.train(num_pass=1)
+        topic_model.train_mallet(num_pass=10)
+        topic_model.calc_coherence()
+
         with open("./topic_model.pickle", "wb") as f:
              pickle.dump(topic_model, f)
 
     with open("./topic_model.pickle", "rb") as f:
         
-
         topic_model = pickle.load(f)
         topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
 
@@ -570,11 +633,11 @@ if __name__ == "__main__":
         # topic_model.update_lda()
 
         # save LDAvis
-        # print("Save html ====================================================")
-        # topic_model.save_lda_vis_as_html()
+        print("Save html ====================================================")
+        topic_model.save_lda_vis_as_html(method="tsne")
 
-        # import webbrowser
-        # uri = 'file://' + '/Users/MiniBell/workspace/sazanami/app/pyldavis_output.html'
-        # webbrowser.open_new_tab(uri)
+        import webbrowser
+        uri = 'file://' + '/Users/MiniBell/workspace/sazanami/app/pyldavis_output.html'
+        webbrowser.open_new_tab(uri)
 
     print("Done")
