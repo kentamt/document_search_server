@@ -37,7 +37,7 @@ import pyLDAvis.gensim
 from line_profiler import LineProfiler
 
 # Local
-from error_definition import Error
+from error_definition import Result
 
 class TopicModel:
     
@@ -76,13 +76,15 @@ class TopicModel:
         # pyLDAvis.enable_notebook()
 
     def get_model_info(self):
-        ret = {}
-        ret["num_topics"] = self.num_topics
-        ret["num_docs"] = self.num_docs
-        ret["date"] = self.model_create_datetime
-        # self.perplexity # TODO
-
-        return ret
+        try:
+            ret = {}
+            ret["num_topics"] = self.num_topics
+            ret["num_docs"] = self.num_docs
+            ret["date"] = self.model_create_datetime
+            # self.perplexity # TODO
+            return ret
+        except:
+            return Result.SOMETHING_WRONG
 
     def add_doc(self, doc, ind=None):
         """
@@ -95,7 +97,8 @@ class TopicModel:
         # check if there is same id
         if ind in self.doc_ids:
             print("[Error] There is the same ID in corpus.")
-            return -1
+            return Result.SAME_DOC
+
         else:
             print("Add new document on corpus and topic distoribution indecies.")
             text = self.preprocess(doc)
@@ -110,24 +113,26 @@ class TopicModel:
             topic_dist = self.lda.get_document_topics([corpus], minimum_probability=0)
 
             self.doc_index_similarity.add_documents(topic_dist)  # add more documents in corpus
-            return 1
+            return Result.SUCCESS
 
-    def add_docs(self, docs):
-        """
-        """        
-        num_docs = len(docs)
+    # def add_docs(self, docs):
+    #     """
+    #     """        
+    #     num_docs = len(docs)
         
-        texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization
-        self.corpus.extend([self.dictionary.doc2bow(text) for text in texts])
-        self.trained_flags.extend([False] * num_docs)
+    #     texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization
+    #     self.corpus.extend([self.dictionary.doc2bow(text) for text in texts])
+    #     self.trained_flags.extend([False] * num_docs)
 
-        self.num_docs += num_docs
+    #     self.num_docs += num_docs
 
     def corpus_from_doc(self, doc):
-
+        """
+        """
         text = self.preprocess(doc)
         corpus = self.dictionary.doc2bow(text)
         return corpus
+
 
     def update_dictionary(self, texts):
         """
@@ -218,15 +223,15 @@ class TopicModel:
 
         if self.corpus is None:
             print("corpus does not exist.")
-            return -1
+            return Result.NO_CORPUS
 
         if self.dictionary is None:
             print("dictionary does not exist.")
-            return -1
+            return Result.NO_DICTIONARY
 
         if self.num_topics is None:
             print("num topics is not difined.")
-            return -1
+            return Result.NO_NUM_TOPICS
 
         self.lda = gensim.models.ldamodel.LdaModel(
             corpus=self.corpus,
@@ -244,11 +249,10 @@ class TopicModel:
         self.set_topic_distribution_matrix()
         self.set_topic_distribution_index()
         
-
         # set current datetime
         self.model_create_datetime = datetime.now()
 
-        return 1
+        return Result.SUCCESS
 
     def update_lda(self):
         """
@@ -358,7 +362,7 @@ class TopicModel:
             target_ind = self.doc_ids.index(ind)
             ret = self.corpus[target_ind]
         except:
-            ret = -1
+            ret = Result.NO_DOCS
 
         return ret
 
@@ -400,13 +404,13 @@ class TopicModel:
         """ 
         
         if not self.is_model_trained:
-            return -2 # TODO: Define error codes
+            return Result.NO_MODEL # -2 # TODO: Define error codes
 
         # get topic distribution 
         test_corpus = self.get_corpus_from_id(ind)
-        if test_corpus == -1:
+        if test_corpus == Result.NO_DOCS:
             print("Doc does not exist")
-            return -1
+            return Result.NO_DOCS
 
         topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
 
@@ -439,13 +443,13 @@ class TopicModel:
         """ 
         
         if not self.is_model_trained:
-            return -2 # TODO: Define error codes
+            return Result.NO_MODEL# -2 # TODO: Define error codes
 
         # get topic distribution 
         test_corpus = self.get_corpus_from_id(ind)
-        if test_corpus == -1:
+        if test_corpus == Result.NO_DOCS:
             print("Doc does not exist")
-            return -1
+            return Result.NO_DOCS# -1
 
         topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
 
@@ -465,13 +469,13 @@ class TopicModel:
 
     def calc_best_topic_from_id(self, ind):
         if not self.is_model_trained:
-            return -2 # TODO: Define error codes
+            return Result.NO_MODEL# -2 # TODO: Define error codes
 
         # get corpus
         test_corpus = self.get_corpus_from_id(ind)
         if test_corpus == -1:
             print("Doc does not exist")
-            return -1
+            return Result.NO_DOCS# -1
 
         # get topic distribution
         topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
@@ -511,6 +515,8 @@ if __name__ == "__main__":
         topic_model = pickle.load(f)
         topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
 
+        print(topic_model.get_model_info())
+
         # show topics
         # print("Show topics ==================================================")
         # topic_model.vizualize_result()
@@ -531,8 +537,9 @@ if __name__ == "__main__":
 
         # recommended_ids = topic_model.recommend_from_doc(doc)
 
+        ind = 12000
         recommended_ids = topic_model.recommend_from_id(ind, num_similar_docs=10)
-        if recommended_ids == -2 or recommended_ids == -1:
+        if recommended_ids == Result.NO_MODEL or recommended_ids == Result.NO_DOCS:
             print("error")
             exit(-1)
 
@@ -542,7 +549,7 @@ if __name__ == "__main__":
 
         print("----")
         recommended_ids = topic_model.recommend_from_id_(ind, num_similar_docs=10)
-        if recommended_ids == -2 or recommended_ids == -1:
+        if recommended_ids == Result.NO_MODEL or recommended_ids == Result.NO_DOCS:
             print("error")
             exit(-1)
 
