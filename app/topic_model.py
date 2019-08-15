@@ -24,7 +24,7 @@ import pandas as pd
 import gensim
 from gensim import similarities     
 from gensim.models import CoherenceModel
-from gensim.test.utils import get_tmpfile, common_texts
+from gensim.test.utils import get_tmpfile,  common_texts, common_dictionary, common_corpus
 import nltk
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
@@ -149,12 +149,11 @@ class TopicModel:
         """
         return gensim.corpora.Dictionary(texts)        
 
-    def create_corpus_from_df(self, df):
+    def create_corpus_from_df(self, df, num_docs = 3000):
         """
         function for test
         TODO: use append instead of init list
         """
-        num_docs = 3000  # how many documents to use
         docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
         texts = [self._preprocess(doc) for doc in docs] # remove stop words and lemmatization 
         self.texts = texts # NOTE: for calc coherence
@@ -168,14 +167,23 @@ class TopicModel:
         self.num_docs = num_docs
         self.doc_ids = [e for e in df.loc[0:num_docs].index]
 
+    def create_corpus_from_test_data(self):
+        self.texts = common_texts
+        self.corpuses = common_corpus
+        self.dictionary = common_dictionary
 
-    def load_nltk_data(self):
+        self.num_docs = len(self.corpuses)
+        self.doc_ids = list(range(self.num_docs))
+        self.trained_flags = [False] * self.num_docs
+
+    def load_nltk_data(self, should_download=True):
         """
         init nltk data. It should be done when the first time.
         """
-        nltk.download("stopwords") 
-        nltk.download('wordnet')
-        nltk.download('averaged_perceptron_tagger')
+        if should_download:
+            nltk.download("stopwords") 
+            nltk.download('wordnet')
+            nltk.download('averaged_perceptron_tagger')
         self.wn = WordNetLemmatizer()        
 
     def _simplify(self, penn_tag):
@@ -229,7 +237,7 @@ class TopicModel:
         coherence_lda = coherence_model_lda.get_coherence()
         return coherence_lda
 
-    def train_mallet(self, eta="auto", alpha="auto", num_pass=10):
+    def train_mallet(self, iterations=1000):
         """
         MALLET version of LDA model
         """
@@ -251,11 +259,12 @@ class TopicModel:
             mallet_path, 
             corpus=self.corpuses,
             num_topics=self.num_topics,
-            id2word=self.dictionary
+            id2word=self.dictionary,
             # passes=num_pass # ,
             # eta = eta,
             # added
-            # random_state=100,
+            iterations=iterations,
+            random_seed=100
             # update_every=1,
             # chunksize=100,
             # alpha='auto',
@@ -268,7 +277,7 @@ class TopicModel:
         self.is_model_trained = True
 
         # set all topic distoributions
-        self.set_topic_distribution_matrix()
+        # self.set_topic_distribution_matrix()
         self.set_topic_distribution_index()
 
         # set current datetime
@@ -311,7 +320,7 @@ class TopicModel:
         self.is_model_trained = True
 
         # set all topic distoributions
-        self.set_topic_distribution_matrix()
+        # self.set_topic_distribution_matrix()
         self.set_topic_distribution_index()
         
         # set current datetime
@@ -565,18 +574,22 @@ if __name__ == "__main__":
 
     if not use_pickle:
         topic_model = TopicModel()
-        topic_model.load_nltk_data()
-
-        topic_model.set_num_topics(10)
-        topic_model.create_corpus_from_df(df)
+        topic_model.load_nltk_data(should_download=False)
+        topic_model.set_num_topics(3)
+        
+        # topic_model.create_corpus_from_df(df)
+        topic_model.create_corpus_from_test_data()
 
         # topic_model.train(num_pass=1)
-        topic_model.train_mallet(num_pass=10)
+        topic_model.train_mallet()
         topic_model.calc_coherence()
+
+        print(topic_model.lda.get_document_topics(common_corpus[0]))
+        # 
 
         with open("./topic_model.pickle", "wb") as f:
              pickle.dump(topic_model, f)
-
+        exit(1)
     with open("./topic_model.pickle", "rb") as f:
         
         topic_model = pickle.load(f)
@@ -605,15 +618,6 @@ if __name__ == "__main__":
         # recommended_ids = topic_model.recommend_from_doc(doc)
 
         idx = 12000
-        recommended_ids = topic_model.recommend_from_id(idx, num_similar_docs=10)
-        if recommended_ids == Result.NO_MODEL or recommended_ids == Result.NO_DOCS:
-            print("error")
-            exit(-1)
-
-        for ridx in recommended_ids:
-            # print(topic_model.get_doc(ridx))
-            print("[recommend ]" + str(ridx))
-
         print("----")
         recommended_ids = topic_model.recommend_from_id_(idx, num_similar_docs=10)
         if recommended_ids == Result.NO_MODEL or recommended_ids == Result.NO_DOCS:
