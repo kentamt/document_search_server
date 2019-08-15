@@ -50,7 +50,7 @@ class TopicModel:
         self.df = None  # DataFrame for original data ?
         
         # data
-        self.corpus = None
+        self.corpuses = None
         self.doc_ids = None
         self.trained_flags = None
         self.train_docs_ids = None
@@ -88,34 +88,36 @@ class TopicModel:
         except:
             return Result.SOMETHING_WRONG
 
-    def add_doc(self, doc, ind=None):
+    def add_doc(self, doc, idx=None):
         """
         """
 
         # create new id
-        if ind is None:
-            ind = np.max(self.doc_ids) + 1            
+        if idx is None:
+            idx = np.max(self.doc_ids) + 1            
 
         # check if there is same id
-        if ind in self.doc_ids:
+        if idx in self.doc_ids:
             print("[Error] There is the same ID in corpus.")
             return Result.SAME_DOC
 
         else:
             print("Add new document on corpus and topic distoribution indecies.")
-            text = self.preprocess(doc)
+            text = self._preprocess(doc)
             corpus = self.dictionary.doc2bow(text)
             
             self.texts.append(text)
-            self.corpus.append(corpus)
+            self.corpuses.append(corpus)
             self.trained_flags.append(False)
-            self.doc_ids.append(ind)
+            self.doc_ids.append(idx)
             self.num_docs += 1
 
             # push topic_distoribution_index
             topic_dist = self.lda.get_document_topics([corpus], minimum_probability=0)
 
-            self.doc_index_similarity.add_documents(topic_dist)  # add more documents in corpus
+            # add more documents in corpus
+            self.doc_index_similarity.add_documents(topic_dist)  
+
             return Result.SUCCESS
 
     # def add_docs(self, docs):
@@ -123,8 +125,8 @@ class TopicModel:
     #     """        
     #     num_docs = len(docs)
         
-    #     texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization
-    #     self.corpus.extend([self.dictionary.doc2bow(text) for text in texts])
+    #     texts = [self._preprocess(doc) for doc in docs] # remove stop words and lemmatization
+    #     self.corpuses.extend([self.dictionary.doc2bow(text) for text in texts])
     #     self.trained_flags.extend([False] * num_docs)
 
     #     self.num_docs += num_docs
@@ -132,7 +134,7 @@ class TopicModel:
     def corpus_from_doc(self, doc):
         """
         """
-        text = self.preprocess(doc)
+        text = self._preprocess(doc)
         corpus = self.dictionary.doc2bow(text)
         return corpus
 
@@ -154,13 +156,13 @@ class TopicModel:
         """
         num_docs = 3000  # how many documents to use
         docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
-        texts = [self.preprocess(doc) for doc in docs] # remove stop words and lemmatization 
+        texts = [self._preprocess(doc) for doc in docs] # remove stop words and lemmatization 
         self.texts = texts # NOTE: for calc coherence
 
         # Create new dictionary
         self.dictionary = self.update_dictionary(texts)
 
-        self.corpus = [self.dictionary.doc2bow(text) for text in texts]
+        self.corpuses = [self.dictionary.doc2bow(text) for text in texts]
         self.trained_flags = [False] * num_docs
 
         self.num_docs = num_docs
@@ -187,7 +189,7 @@ class TopicModel:
         else:
             return 'n'
 
-    def preprocess(self, text):
+    def _preprocess(self, text):
         """
         1. remove stopwords
         2. lemmatization
@@ -197,7 +199,7 @@ class TopicModel:
         ret = [self.wn.lemmatize(tok, self._simplify(pos)) for tok, pos in nltk.pos_tag(toks) if tok not in stop_words]
         return ret
 
-    def create_eta(self, priors, etadict, num_topics):
+    def _create_eta(self, priors, etadict, num_topics):
         """
         TODO: write functions to create priors
         """
@@ -216,18 +218,23 @@ class TopicModel:
         self.num_topics = num_topics
 
     def calc_perplexity(self):
-        perplexity = np.exp2(-self.lda.log_perplexity(self.corpus))
+        perplexity = np.exp2(-self.lda.log_perplexity(self.corpuses))
         return perplexity
 
     def calc_coherence(self):
+        """
+        !Caution: it may take a long time
+        """
         coherence_model_lda = CoherenceModel(model=self.lda, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
         coherence_lda = coherence_model_lda.get_coherence()
-        # print('\nCoherence Score: ', coherence_lda)
         return coherence_lda
 
     def train_mallet(self, eta="auto", alpha="auto", num_pass=10):
-        
-        if self.corpus is None:
+        """
+        MALLET version of LDA model
+        """
+
+        if self.corpuses is None:
             print("corpus does not exist.")
             return Result.NO_CORPUS
 
@@ -242,7 +249,7 @@ class TopicModel:
         mallet_path = "./mallet-2.0.8/bin/mallet" # update this path
         lda_mallet = gensim.models.wrappers.LdaMallet(
             mallet_path, 
-            corpus=self.corpus,
+            corpus=self.corpuses,
             num_topics=self.num_topics,
             id2word=self.dictionary
             # passes=num_pass # ,
@@ -271,10 +278,9 @@ class TopicModel:
 
     def train(self, eta="auto", alpha="auto", num_pass=10):
         """
-        @ret -1: error
         """        
 
-        if self.corpus is None:
+        if self.corpuses is None:
             print("corpus does not exist.")
             return Result.NO_CORPUS 
 
@@ -287,7 +293,7 @@ class TopicModel:
             return Result.NO_NUM_TOPICS
 
         self.lda = gensim.models.ldamodel.LdaModel(
-            corpus=self.corpus,
+            corpus=self.corpuses,
             num_topics=self.num_topics,
             id2word=self.dictionary,
             passes=num_pass,
@@ -324,7 +330,7 @@ class TopicModel:
         ! Check out the HashDictionary class which uses the "hashing trick" to work around this limitation (but the hashing trick comes with its own caveats).
         """
 
-        new_corpus = [e for f, e in zip(self.trained_flags, self.corpus) if not f]
+        new_corpus = [e for f, e in zip(self.trained_flags, self.corpuses) if not f]
 
         # new_docs = [e for f, e in zip(self.trained_flags, self.docs) if not f]
         # for doc in new_docs:
@@ -354,9 +360,9 @@ class TopicModel:
 
     def save_lda_vis_as_html(self, method=None):
         if method is None:
-            vis = pyLDAvis.gensim.prepare(self.lda, self.corpus, self.dictionary, sort_topics=False)
+            vis = pyLDAvis.gensim.prepare(self.lda, self.corpuses, self.dictionary, sort_topics=False)
         else:
-            vis = pyLDAvis.gensim.prepare(self.lda, self.corpus, self.dictionary, mds=method, sort_topics=False)
+            vis = pyLDAvis.gensim.prepare(self.lda, self.corpuses, self.dictionary, mds=method, sort_topics=False)
         pyLDAvis.save_html(vis, './pyldavis_output.html')
 
     def get_topic_terms(self, topic_id):
@@ -377,7 +383,6 @@ class TopicModel:
         for t in self.calc_topic_distribution_from_doc(doc):
             print("Topic {}: {}".format(t[0], t[1]))
 
-
     def save_model(self, path):
         print("Not implimented yew")
         pass 
@@ -387,23 +392,21 @@ class TopicModel:
         pass 
     
     def set_topic_distribution_index(self):
-        # create document index for all topic distribution        
-        # self.topic_distributions = self.lda.get_document_topics(self.corpus)
-
+        """
+        """
         self.create_topic_distributions_from_curposes()
         index_tmpfile = get_tmpfile('index')
         self.doc_index_similarity = similarities.Similarity(index_tmpfile, self.topic_distributions, num_features=len(self.dictionary))
 
     def set_topic_distribution_matrix(self):
-        # create document index for all topic distribution        
-        # self.topic_distributions = self.lda.get_document_topics(self.corpus)
-
+        """
+        """
         self.create_topic_distributions_from_curposes()
         self.doc_mat_similarity = similarities.docsim.MatrixSimilarity(self.topic_distributions)
 
     def set_topic_distribution_own_matrix(self):
         # create document index for all topic distribution        
-        # self.topic_distributions = self.lda.get_document_topics(self.corpus)
+        # self.topic_distributions = self.lda.get_document_topics(self.corpuses)
 
         # self.create_topic_distributions_from_curposes()
         # self.doc_mat_similarity = similarities.docsim.MatrixSimilarity(self.topic_distributions)
@@ -413,16 +416,16 @@ class TopicModel:
     def create_topic_distributions_from_curposes(self):
         """
         """
-        self.topic_distributions = self.lda.get_document_topics(self.corpus, minimum_probability=0)
+        self.topic_distributions = self.lda.get_document_topics(self.corpuses, minimum_probability=0)
         # all_topics_csr = gensim.matutils.corpus2csc(self.topic_distributions)
         # all_topics_numpy = all_topics_csr.T.toarray()
 
 
-    def get_corpus_from_id(self, ind):
+    def get_corpus_from_id(self, idx):
         
         try:
-            target_ind = self.doc_ids.index(ind)
-            ret = self.corpus[target_ind]
+            target_idx = self.doc_ids.index(idx)
+            ret = self.corpuses[target_idx]
         except:
             ret = Result.NO_DOCS
 
@@ -452,7 +455,7 @@ class TopicModel:
         
         return recommended_docs_ids  
 
-    def recommend_from_id(self, ind, num_similar_docs = 3):
+    def recommend_from_id(self, idx, num_similar_docs = 3):
         """
         ! Caution
         ! The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
@@ -469,7 +472,7 @@ class TopicModel:
             return Result.NO_MODEL # -2 # TODO: Define error codes
 
         # get topic distribution 
-        test_corpus = self.get_corpus_from_id(ind)
+        test_corpus = self.get_corpus_from_id(idx)
         if test_corpus == Result.NO_DOCS:
             print("Doc does not exist")
             return Result.NO_DOCS
@@ -491,7 +494,7 @@ class TopicModel:
         
         return recommended_docs_ids  
 
-    def recommend_from_id_(self, ind, num_similar_docs = 3):
+    def recommend_from_id_(self, idx, num_similar_docs = 3):
         """
         ! Caution
         ! The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
@@ -508,7 +511,7 @@ class TopicModel:
             return Result.NO_MODEL# -2 # TODO: Define error codes
 
         # get topic distribution 
-        test_corpus = self.get_corpus_from_id(ind)
+        test_corpus = self.get_corpus_from_id(idx)
         if test_corpus == Result.NO_DOCS:
             print("Doc does not exist")
             return Result.NO_DOCS# -1
@@ -529,12 +532,12 @@ class TopicModel:
 
         return recommended_docs_ids
 
-    def calc_best_topic_from_id(self, ind):
+    def calc_best_topic_from_id(self, idx):
         if not self.is_model_trained:
             return Result.NO_MODEL# -2 # TODO: Define error codes
 
         # get corpus
-        test_corpus = self.get_corpus_from_id(ind)
+        test_corpus = self.get_corpus_from_id(idx)
         if test_corpus == -1:
             print("Doc does not exist")
             return Result.NO_DOCS# -1
@@ -555,7 +558,7 @@ class TopicModel:
 
 if __name__ == "__main__":
 
-    use_pickle = True
+    use_pickle = False
 
     # read test data
     df = pd.read_csv("./arxivs_data.csv")
@@ -593,33 +596,33 @@ if __name__ == "__main__":
         # recommend docs
         print("Recommend docs ===============================================")
         
-        ind = 12000
-        doc  = df.iloc[ind]["abstract"]
+        idx = 12000
+        doc  = df.iloc[idx]["abstract"]
         
         topic_model.disp_topic_distribution(doc)
-        topic_model.add_doc(doc, ind=ind)
+        topic_model.add_doc(doc, idx=idx)
 
         # recommended_ids = topic_model.recommend_from_doc(doc)
 
-        ind = 12000
-        recommended_ids = topic_model.recommend_from_id(ind, num_similar_docs=10)
+        idx = 12000
+        recommended_ids = topic_model.recommend_from_id(idx, num_similar_docs=10)
         if recommended_ids == Result.NO_MODEL or recommended_ids == Result.NO_DOCS:
             print("error")
             exit(-1)
 
-        for rind in recommended_ids:
-            # print(topic_model.get_doc(rind))
-            print("[recommend ]" + str(rind))
+        for ridx in recommended_ids:
+            # print(topic_model.get_doc(ridx))
+            print("[recommend ]" + str(ridx))
 
         print("----")
-        recommended_ids = topic_model.recommend_from_id_(ind, num_similar_docs=10)
+        recommended_ids = topic_model.recommend_from_id_(idx, num_similar_docs=10)
         if recommended_ids == Result.NO_MODEL or recommended_ids == Result.NO_DOCS:
             print("error")
             exit(-1)
 
-        for rind in recommended_ids:
-            # print(topic_model.get_doc(rind))
-            print("[recommend ]" + str(rind))
+        for ridx in recommended_ids:
+            # print(topic_model.get_doc(ridx))
+            print("[recommend ]" + str(ridx))
 
 
         # add new doc and update model
