@@ -20,10 +20,25 @@ redis = Redis(host='redis', port=6379)
 topic_model = None
 df = pd.read_csv("./arxivs_data.csv")
 
+
+@app.errorhandler(404)
+@app.errorhandler(400)
+@app.errorhandler(500)
+def error_handler(error):
+    '''
+     Description
+      - abort handler
+    '''
+    response = flask.jsonify(
+    {
+        "error": error.description['error']
+    })
+
+    return response, error.code
+
 @app.route('/')
 def hello():
-    redis.incr('hits') # TODO: global変数じゃなくて大丈夫？
-    return 'Hello World! I have been seen %s times.' % redis.get('hits')
+    return "Hello world", 200
 
 @app.route("/model/init", methods=["GET"])
 def init_model():
@@ -33,22 +48,20 @@ def init_model():
     global topic_model
     global df
     
-    response = {
-        "Content-Type": "application/json",
-        "status_code": 999
-    }    
+    response = {}    
 
-    # read test data
-    topic_model = TopicModel()
-    topic_model.load_nltk_data()
-    topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
+    try:
+        # init model and data
+        topic_model = TopicModel()
+        topic_model.load_nltk_data()
+        topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
 
-    # for debug
-    topic_model.create_corpus_from_df(df)
-    
-    response["status_code"] = 200
-    
-    return flask.jsonify(response)
+        # for debug
+        topic_model.create_corpus_from_df(df)        
+        return flask.jsonify(response)
+    except:
+        flask.abort(500, {"error" : "Something went wrong."})
+
 
 @app.route("/model/save", methods=["GET"])
 def save_model():
@@ -57,17 +70,24 @@ def save_model():
     """
     global topic_model
 
+    if topic_model is None:
+        flask.abort(404, {"error" : "Topic model has not been created."})
+
     response = {
         "Content-Type": "application/json",
         "status_code": 999
     }    
 
-    with open("./topic_model.pickle", "wb") as f:
-        pickle.dump(topic_model, f)
-        response["status_code"] = 200
+    try:
+        with open("./topic_model.pickle", "wb") as f:
+            pickle.dump(topic_model, f)
+            response["status_code"] = 200
 
-    print("Save topic model as pickle")
-    return flask.jsonify(response)
+        print("Save topic model as pickle")
+        return flask.jsonify(response)
+    except:
+        flask.abort(500, {"error" : "Something went wrong."})
+
 
 @app.route("/model/load", methods=["GET"])
 def load_model():
@@ -75,22 +95,23 @@ def load_model():
     for better debug
     """
     global topic_model
+    if topic_model is None:
+        flask.abort(404, {"error" : "Topic model has not been created."})
 
-    response = {
-        "Content-Type": "application/json",
-        "status_code": 999
-    }    
 
-    topic_model = None
-    with open("./topic_model.pickle", "rb") as f:        
-        topic_model = pickle.load(f)
-        topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
-        topic_model.set_topic_distribution_index() # TODO: consider where this function should be called
-        response["status_code"] = 200
+    response = {}    
+    try:
+        topic_model = None
+        with open("./topic_model.pickle", "rb") as f:        
+            topic_model = pickle.load(f)
+            topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
+            topic_model.set_topic_distribution_index() # TODO: consider where this function should be called
+            print("Load topic model from pickle")
 
-    print("Load topic model from pickle")
+        return flask.jsonify(response)
 
-    return flask.jsonify(response)
+    except:
+        flask.abort(500, {"error" : "Something went wrong."})
 
 @app.route("/model/train", methods=["POST"])
 def model_train():
@@ -99,11 +120,10 @@ def model_train():
     TODO: arguments
     """
     global topic_model
-    
-    response = {
-        "Content-Type": "application/json",
-        "status_code": 999
-    }    
+    if topic_model is None:
+        flask.abort(404, {"error" : "Topic model has not been created."})
+
+    response = {}
 
     # ensure an feature was properly uploaded to our endpoint
     if flask.request.method == "POST":
@@ -127,24 +147,19 @@ def model_train():
 
         # error handling
         if ret == Result.NO_CORPUS:
-            response["status_code"] = 500
-            response["error"] = "There is no corpus"
+            print("here")
+            flask.abort(500, {"error" : "There is no corpus"})
         
         elif ret == Result.NO_DICTIONARY:
-            response["status_code"] = 500
-            response["error"] = "Dictionary must be set"
+            flask.abort(500, {"error" : "Dictionary must be set"})
 
         elif ret == Result.NO_NUM_TOPICS: # never, but just in case
-            response["status_code"] = 500
-            response["error"] = "Number of topics must be set"
+            flask.abort(500, {"error" : "Number of topics must be set"})
             
         elif ret == Result.SUCCESS:
-            response["status_code"] = 200
-
             # Save pickle
             with open("./topic_model.pickle", "wb") as f:
                 pickle.dump(topic_model, f)
-                response["status_code"] = 200
         
     return flask.jsonify(response)
 
@@ -155,62 +170,50 @@ def model_info():
     API GET /model
     """
     global topic_model
+    if topic_model is None:
+        flask.abort(404, {"error" : "Topic model has not been created."})
 
-    response = {
-        "status_code" : 999,
-        "Content-Type": "application/json"
-    }    
+    response = {}    
 
     # ensure an feature was properly uploaded to our endpoint
     if flask.request.method == "GET":
-
+  
         params = topic_model.get_model_info()
         response["num_topics"] = params["num_topics"]# num_topics
         response["num_docs"] = params["num_docs"] # num_docs    
         
         if params["date"] is None: # not trained yet
-            response["status_code"] = 404 # Bad
-            response["error"] = "Topic model has not been created"
+            flask.abort(404, {"error" : "Topic model has not been created."})
         else:
-            response["status_code"] = 200 # Good
             response["model_create_datetime"] = params["date"].strftime('%Y/%m/%d_%H:%M:%S')
 
     return flask.jsonify(response)
 
-
-@app.route("/docs/<int:ind>", methods=["GET"])
-def recommend(ind=None):
+@app.route("/docs/<int:idx>", methods=["GET"])
+def recommend(idx=None):
     """
-    API GET /docs/:ind?num_docs=XX
+    API GET /docs/:idx?num_docs=XX
     """
     global topic_model
 
-    response = {
-        "Content-Type": "application/json",
-        "status_code": 999
-    }    
+    if topic_model is None:
+        flask.abort(404, {"error" : "Topic model has not been created."})
 
+    response = {}    
     # ensure an feature was properly uploaded to our endpoint
     if flask.request.method == "GET":
         num_similar_docs = flask.request.args.get("num_docs", 3)
-        ret = topic_model.recommend_from_id_(ind, num_similar_docs = int(num_similar_docs))
+        ret = topic_model.recommend_from_id_(idx, num_similar_docs = int(num_similar_docs))
 
         if ret == Result.NO_DOCS:
-            response["status_code"] = 404
-            response["error"] = "Document is not found"
-            return flask.jsonify(response)
+            flask.abort(404, {"error" : "Document is not found."})
 
         if ret == Result.NO_MODEL:
-            response["status_code"] = 500
-            response["error"] = "Topic model is not created"
-            return flask.jsonify(response)
+            flask.abort(500, {"error" : "Topic model is not created."})
         
-        # TODO: 500: Something went wrong
-        
-        topic_no = topic_model.calc_best_topic_from_id(ind)
+        topic_no = topic_model.calc_best_topic_from_id(idx)
         response["topic"] = topic_no
         response["similar_docs"] = ret    
-        response["status_code"] = 200
 
     return flask.jsonify(response)
 
@@ -220,38 +223,38 @@ def add_docs():
     API
     """
     global topic_model
-    
-    response = {
-        "Content-Type": "application/json",
-        "status_code" : 999
-    }
 
+    if topic_model is None:
+        flask.abort(404, {"error" : "Topic model has not been created."})
+
+
+    response = {}
     # ensure an feature was properly uploaded to our endpoint
     if flask.request.method == "POST":
-        if flask.request.get_json().get("doc_ind"):
+        if flask.request.get_json().get("doc_idx"):
             
             # read feature from json
-            doc_ind = flask.request.get_json().get("doc_ind")
+            doc_idx = flask.request.get_json().get("doc_idx")
 
             # TODO: shoud remove because of DEBUG
             start = time.time()
-            doc  = df.iloc[doc_ind]["abstract"] # TODO: handle out of index            
+            doc  = df.iloc[doc_idx]["abstract"] # TODO: handle out of index            
             print(time.time() - start, end="[sec]\n")
 
             start = time.time()
-            ret = topic_model.add_doc(doc, ind=doc_ind)
+            ret = topic_model.add_doc(doc, idx=doc_idx)
             print(time.time() - start, end="[sec]\n")
             
             if ret == Result.SUCCESS:
-                response["status_code"] = 200                
-                # topic_model.set_topic_distribution_index() # calc topic distoributions with all corpus again TODO
-            elif ret == Result.SAME_DOC:
-                response["error"] = "The doc_id has already been used"
-                response["status_code"] = 400
-            else: # never, but just in case
-                response["error"] = "Something went wrong"
-                response["status_code"] = 500
+                # Save pickle
+                with open("./topic_model.pickle", "wb") as f:
+                    pickle.dump(topic_model, f)
 
+            elif ret == Result.SAME_DOC:
+                flask.abort(400, {"error" : "The document index has already been used."})
+
+            else: # just in case
+                flask.abort(500, {"error" : "Something went wrong."})
     return flask.jsonify(response)
 
 if __name__ == "__main__":
