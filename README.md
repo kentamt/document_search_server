@@ -57,3 +57,4 @@ This returns json format like below.
 - Hyper parameters optimization
 - Save and load method
 - Function for stopwords. i.e. add_stopwords(), show_stopwords()
+- Try Bigram and Trigram to make corpus better
