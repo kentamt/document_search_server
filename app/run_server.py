@@ -143,12 +143,17 @@ def model_train():
         num_topics = 5
 
         # get params
-        if flask.request.get_json().get("num_pass"):
-            num_pass = flask.request.get_json().get("num_pass")
-
-        if flask.request.get_json().get("num_topics"):
-            num_topics = flask.request.get_json().get("num_topics")
-
+        try:
+            if flask.request.get_json().get("num_pass"):
+                num_pass = flask.request.get_json().get("num_pass")
+        except:
+            print("No json args")
+        try:
+            if flask.request.get_json().get("num_topics"):
+                num_topics = flask.request.get_json().get("num_topics")
+        except:
+            print("No json args")
+            
         # num topic
         topic_model.set_num_topics(num_topics)
 
@@ -170,6 +175,8 @@ def model_train():
             # Save pickle
             with open("./topic_model.pickle", "wb") as f:
                 pickle.dump(topic_model, f)
+        else: # just in case
+            flask.abort(500, {"error" : "Something went wrong"})
         
     return flask.jsonify(response)
 
