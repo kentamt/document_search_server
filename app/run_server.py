@@ -3,6 +3,8 @@ import os
 import time
 import glob
 import pickle
+from collections import deque
+
 import flask
 import numpy as np
 import pandas as pd
@@ -19,7 +21,6 @@ redis = Redis(host='redis', port=6379)
 # Global
 topic_model = None
 df = pd.read_csv("./arxivs_data.csv")
-model_count = 0
 
 @app.errorhandler(404)
 @app.errorhandler(400)
@@ -69,7 +70,6 @@ def save_model():
     for better debug
     """
     global topic_model
-    global model_count
 
     if topic_model is None:
         flask.abort(404, {"error" : "Topic model has not been created."})
@@ -81,12 +81,18 @@ def save_model():
 
     params = topic_model.get_model_info()
     strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
-    print(strtime)
     try:
         with open("./topic_model_" + strtime + ".pickle", "wb") as f:
             pickle.dump(topic_model, f)
+            
+            # delete old file if there are more than 10 files
+            pickles = sorted(glob.glob("./topic_model_*.pickle"))
+            if len(pickles) > 10:
+                oldest_pickle = pickles[0]
+                os.remove(oldest_pickle)
+                print("Remove old pickle, " + oldest_pickle)
+
             response["status_code"] = 200
-            model_count += 1
             
         print("Save topic model as pickle")
         return flask.jsonify(response)
@@ -110,9 +116,9 @@ def load_model():
         topic_model = None
 
         pickles = sorted(glob.glob("./topic_model_*.pickle"))
-        print(pickles)
+        latest_pickle = pickles[-1]
 
-        with open("./topic_model.pickle", "rb") as f:        
+        with open(latest_pickle, "rb") as f:        
             topic_model = pickle.load(f)
             topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
             topic_model.set_topic_distribution_index() # TODO: consider where this function should be called

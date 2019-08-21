@@ -118,6 +118,9 @@ class TopicModel:
             # add more documents in corpus
             self.doc_index_similarity.add_documents(topic_dist)  
 
+            # update current datetime
+            self.model_create_datetime = datetime.now()
+
             return Result.SUCCESS
 
     # def add_docs(self, docs):
@@ -283,7 +286,7 @@ class TopicModel:
         # self.set_topic_distribution_matrix()
         self.set_topic_distribution_index()
 
-        # set current datetime
+        # update current datetime
         self.model_create_datetime = datetime.now()
 
         return Result.SUCCESS
@@ -326,7 +329,7 @@ class TopicModel:
         # self.set_topic_distribution_matrix()
         self.set_topic_distribution_index()
         
-        # set current datetime
+        # update current datetime
         self.model_create_datetime = datetime.now()
 
         return Result.SUCCESS
