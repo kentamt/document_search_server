@@ -154,16 +154,19 @@ class TopicModel:
         function for test
         TODO: use append instead of init list
         """
+        print("docs from df")
         docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
+        print("texts from docs")
         texts = [self._preprocess(doc) for doc in docs] # remove stop words and lemmatization 
         self.texts = texts # NOTE: for calc coherence
 
         # Create new dictionary
+        print("create fictionary")
         self.dictionary = self.update_dictionary(texts)
 
+        print("create corpus")
         self.corpuses = [self.dictionary.doc2bow(text) for text in texts]
         self.trained_flags = [False] * num_docs
-
         self.num_docs = num_docs
         self.doc_ids = [e for e in df.loc[0:num_docs].index]
 
@@ -229,11 +232,11 @@ class TopicModel:
         perplexity = np.exp2(-self.lda.log_perplexity(self.corpuses))
         return perplexity
 
-    def calc_coherence(self):
+    def calc_coherence(self, method="c_v"):
         """
         !Caution: it may take a long time
         """
-        coherence_model_lda = CoherenceModel(model=self.lda, texts=self.texts, dictionary=self.dictionary, coherence='c_v')
+        coherence_model_lda = CoherenceModel(model=self.lda, texts=self.texts, dictionary=self.dictionary, coherence=method)
         coherence_lda = coherence_model_lda.get_coherence()
         return coherence_lda
 

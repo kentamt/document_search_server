@@ -8,7 +8,6 @@ import unittest
 import json
 import run_server
 
- 
 class BasicTests(unittest.TestCase):
  
     ############################
@@ -23,9 +22,9 @@ class BasicTests(unittest.TestCase):
     def tearDown(self):
         pass
  
-###############
-#### tests ####
-###############
+    ###############
+    #### tests ####
+    ###############
  
     def test_hello(self):
         res = self.app.get("/")

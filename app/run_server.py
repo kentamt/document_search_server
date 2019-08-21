@@ -1,7 +1,7 @@
 import sys
 import os
 import time
-
+import glob
 import pickle
 import flask
 import numpy as np
@@ -19,7 +19,7 @@ redis = Redis(host='redis', port=6379)
 # Global
 topic_model = None
 df = pd.read_csv("./arxivs_data.csv")
-
+model_count = 0
 
 @app.errorhandler(404)
 @app.errorhandler(400)
@@ -69,6 +69,7 @@ def save_model():
     for better debug
     """
     global topic_model
+    global model_count
 
     if topic_model is None:
         flask.abort(404, {"error" : "Topic model has not been created."})
@@ -78,11 +79,15 @@ def save_model():
         "status_code": 999
     }    
 
+    params = topic_model.get_model_info()
+    strtime = params["date"].strftime('%Y/%m/%d_%H:%M:%S')
+
     try:
-        with open("./topic_model.pickle", "wb") as f:
+        with open("./topic_model" + strtime + ".pickle", "wb") as f:
             pickle.dump(topic_model, f)
             response["status_code"] = 200
-
+            model_count += 1
+            
         print("Save topic model as pickle")
         return flask.jsonify(response)
     except:
@@ -95,6 +100,7 @@ def load_model():
     for better debug
     """
     global topic_model
+
     if topic_model is None:
         flask.abort(404, {"error" : "Topic model has not been created."})
 
@@ -102,6 +108,10 @@ def load_model():
     response = {}    
     try:
         topic_model = None
+
+        pickles = sorted(glob.glob("./topic_model_*.pickle"))
+        print(pickles)
+
         with open("./topic_model.pickle", "rb") as f:        
             topic_model = pickle.load(f)
             topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
