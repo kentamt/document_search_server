@@ -80,10 +80,10 @@ def save_model():
     }    
 
     params = topic_model.get_model_info()
-    strtime = params["date"].strftime('%Y/%m/%d_%H:%M:%S')
-
+    strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
+    print(strtime)
     try:
-        with open("./topic_model" + strtime + ".pickle", "wb") as f:
+        with open("./topic_model_" + strtime + ".pickle", "wb") as f:
             pickle.dump(topic_model, f)
             response["status_code"] = 200
             model_count += 1
