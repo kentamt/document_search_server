@@ -261,7 +261,13 @@ def add_docs():
 
             # TODO: shoud remove because of DEBUG
             start = time.time()
-            doc  = df.iloc[doc_idx]["abstract"] # TODO: handle out of index            
+            
+            try:
+                doc  = df.iloc[doc_idx]["abstract"] # TODO: 0を入力するとエラーにならないが文献もaddされない．確認すること
+            except:
+                print("Out of Bounds or There is no data.")
+                flask.abort(400, {"error" : "Invalid index."}) # TODO: I added new error to let user know this index is out of bound or invalid idx
+
             print(time.time() - start, end="[sec]\n")
 
             start = time.time()
