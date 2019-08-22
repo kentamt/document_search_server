@@ -240,8 +240,8 @@ def recommend(idx=None):
 
     return flask.jsonify(response)
 
-@app.route("/docs/add", methods=["POST"])
-def add_docs():
+@app.route("/docs/add_idx", methods=["POST"])
+def add_docs_idx():
     """
     API
     """
@@ -284,6 +284,45 @@ def add_docs():
 
             else: # just in case
                 flask.abort(500, {"error" : "Something went wrong."})
+        else:
+            flask.abort(500, {"error" : "Invalid parameters."})
+
+    return flask.jsonify(response)
+
+@app.route("/docs/add", methods=["POST"])
+def add_docs():
+    """
+    API
+    """
+    global topic_model
+
+    if topic_model is None:
+        flask.abort(404, {"error" : "Topic model has not been created."})
+
+
+    response = {}
+    # ensure an feature was properly uploaded to our endpoint
+    if flask.request.method == "POST":
+        if flask.request.get_json().get("doc") and flask.request.get_json().get("idx"):
+            
+            # read document from json
+            doc = flask.request.get_json().get("doc")
+            doc_idx = flask.request.get_json().get("idx")
+            ret = topic_model.add_doc(doc, idx=doc_idx)
+            
+            if ret == Result.SUCCESS:
+                # Save pickle
+                with open("./topic_model.pickle", "wb") as f:
+                    pickle.dump(topic_model, f)
+
+            elif ret == Result.SAME_DOC:
+                flask.abort(400, {"error" : "The document index has already been used."})
+
+            else: # just in case
+                flask.abort(500, {"error" : "Something went wrong."})
+        else:
+            flask.abort(500, {"error" : "Invalid parameters."})
+
     return flask.jsonify(response)
 
 if __name__ == "__main__":
