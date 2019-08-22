@@ -69,6 +69,9 @@ class TopicModel:
         self.model_create_datetime = None
         self.num_docs = 0
 
+        # topic distoribution indexes
+        self.doc_index_similarity = None
+
         # run options
         self.vis = None
 
@@ -283,7 +286,6 @@ class TopicModel:
         self.is_model_trained = True
 
         # set all topic distoributions
-        # self.set_topic_distribution_matrix()
         self.set_topic_distribution_index()
 
         # update current datetime
@@ -326,7 +328,6 @@ class TopicModel:
         self.is_model_trained = True
 
         # set all topic distoributions
-        # self.set_topic_distribution_matrix()
         self.set_topic_distribution_index()
         
         # update current datetime
@@ -446,40 +447,8 @@ class TopicModel:
 
         return ret
 
-    def recommend_from_doc(self, doc, num_similar = 3):
-        """
-        ! Caution
-        ! The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
-        ! For example, a corpus of one million documents would require 2GB of RAM in a 256-dimensional LSI space, when used with this class.
-        ! Without 2GB of free RAM, you would need to use the similarities.
-        ! Similarity class. This class operates in fixed memory, by splitting the index across multiple files on disk, 
-        ! called shards. It uses similarities.MatrixSimilarity and similarities.
-        ! SparseMatrixSimilarity internally, so it is still fast, although slightly more complex.
-        """ 
-
-        # get topic distribution for new document
-        topic_dist = self.calc_topic_distribution_from_doc(doc)
-
-        # get similarity from all training corpus
-        similar_corpus_id = self.doc_mat_similarity.__getitem__(topic_dist)
-
-        # sort ids by similarity
-        similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
-        
-        recommended_docs_ids = [ e[0] for e in similar_corpus_id[:num_similar]]
-        
-        return recommended_docs_ids  
-
     def recommend_from_id(self, idx, num_similar_docs = 3):
         """
-        ! Caution
-        ! The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
-        ! For example, a corpus of one million documents would require 2GB of RAM in a 256-dimensional LSI space, when used with this class.
-        ! Without 2GB of free RAM, you would need to use the similarities.
-        ! Similarity class. This class operates in fixed memory, by splitting the index across multiple files on disk, 
-        ! called shards. It uses similarities.MatrixSimilarity and similarities.
-        ! SparseMatrixSimilarity internally, so it is still fast, although slightly more complex.
-        
         TODO: 学習データのIDを指定すると、そのIDを当然推薦してくるので、それを除くこと。
         """ 
         
@@ -581,8 +550,6 @@ if __name__ == "__main__":
         
         topic_model.disp_topic_distribution(doc)
         topic_model.add_doc(doc, idx=idx)
-
-        # recommended_ids = topic_model.recommend_from_doc(doc)
 
         idx = 12000
         print("----")

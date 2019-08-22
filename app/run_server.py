@@ -226,7 +226,7 @@ def recommend(idx=None):
     # ensure an feature was properly uploaded to our endpoint
     if flask.request.method == "GET":
         num_similar_docs = flask.request.args.get("num_docs", 3)
-        ret = topic_model.recommend_from_id_(idx, num_similar_docs = int(num_similar_docs))
+        ret = topic_model.recommend_from_id(idx, num_similar_docs = int(num_similar_docs))
 
         if ret == Result.NO_DOCS:
             flask.abort(404, {"error" : "Document is not found."})
