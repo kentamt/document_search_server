@@ -484,45 +484,6 @@ class TopicModel:
         """ 
         
         if not self.is_model_trained:
-            return Result.NO_MODEL # -2 # TODO: Define error codes
-
-        # get topic distribution 
-        test_corpus = self.get_corpus_from_id(idx)
-        if test_corpus == Result.NO_DOCS:
-            print("Doc does not exist")
-            return Result.NO_DOCS
-
-        topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
-
-        # get similarity from all training corpus
-        similar_corpus_id = self.doc_mat_similarity.__getitem__(topic_dist)
-
-        # sort ids by similarity
-        similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
-        
-        if num_similar_docs > self.num_docs:
-            num_similar_docs = self.num_docs
-            print("[Warn] num similar docs must be less than self.num_docs")
-
-        arr_ids = [ e[0] for e in similar_corpus_id[:num_similar_docs]]
-        recommended_docs_ids = [self.doc_ids[e] for e in arr_ids]
-        
-        return recommended_docs_ids  
-
-    def recommend_from_id_(self, idx, num_similar_docs = 3):
-        """
-        ! Caution
-        ! The class similarities.MatrixSimilarity is only appropriate when the whole set of vectors fits into memory. 
-        ! For example, a corpus of one million documents would require 2GB of RAM in a 256-dimensional LSI space, when used with this class.
-        ! Without 2GB of free RAM, you would need to use the similarities.
-        ! Similarity class. This class operates in fixed memory, by splitting the index across multiple files on disk, 
-        ! called shards. It uses similarities.MatrixSimilarity and similarities.
-        ! SparseMatrixSimilarity internally, so it is still fast, although slightly more complex.
-        
-        TODO: 学習データのIDを指定すると、そのIDを当然推薦してくるので、それを除くこと。
-        """ 
-        
-        if not self.is_model_trained:
             return Result.NO_MODEL# -2 # TODO: Define error codes
 
         # get topic distribution 
@@ -625,7 +586,7 @@ if __name__ == "__main__":
 
         idx = 12000
         print("----")
-        recommended_ids = topic_model.recommend_from_id_(idx, num_similar_docs=10)
+        recommended_ids = topic_model.recommend_from_id(idx, num_similar_docs=10)
         if recommended_ids == Result.NO_MODEL or recommended_ids == Result.NO_DOCS:
             print("error")
             exit(-1)
