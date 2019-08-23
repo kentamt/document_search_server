@@ -186,12 +186,13 @@ class TopicModel:
         doc_ids = []
         count = 0        
         for df in reader:
+            print("[INFO ] read " + str(count))
             docs = [e for e in df["abstract"]] # df has "abstract" column
             doc_ids.extend([e for e in df.index])
             texts.extend([self._preprocess(doc) for doc in docs]) # remove stop words and lemmatization 
             count = count + chunksize
             if count >= num_docs:
-                print("[INFO ]Reach max num docs")
+                print("[INFO ] Reach max num docs")
                 break
         
         self.texts = texts # NOTE: for calc coherence
@@ -276,53 +277,6 @@ class TopicModel:
         coherence_model_lda = CoherenceModel(model=self.lda, texts=self.texts, dictionary=self.dictionary, coherence=method)
         coherence_lda = coherence_model_lda.get_coherence()
         return coherence_lda
-
-    def train_mallet(self, iterations=1000):
-        """
-        MALLET version of LDA model
-        """
-
-        if self.corpuses is None:
-            print("corpus does not exist.")
-            return Result.NO_CORPUS
-
-        if self.dictionary is None:
-            print("dictionary does not exist.")
-            return Result.NO_DICTIONARY
-
-        if self.num_topics is None:
-            print("num topics is not difined.")
-            return Result.NO_NUM_TOPICS
-        
-        mallet_path = "./mallet-2.0.8/bin/mallet" # update this path
-        lda_mallet = gensim.models.wrappers.LdaMallet(
-            mallet_path, 
-            corpus=self.corpuses,
-            num_topics=self.num_topics,
-            id2word=self.dictionary,
-            # passes=num_pass # ,
-            # eta = eta,
-            # added
-            iterations=iterations,
-            random_seed=100
-            # update_every=1,
-            # chunksize=100,
-            # alpha='auto',
-            # per_word_topics=True
-            )
-        self.lda = gensim.models.wrappers.ldamallet.malletmodel2ldamodel(lda_mallet)
-
-        # update flags
-        self.trained_flags = [ True for e in self.trained_flags]
-        self.is_model_trained = True
-
-        # set all topic distoributions
-        self.set_topic_distribution_index()
-
-        # update current datetime
-        self.model_create_datetime = datetime.now()
-
-        return Result.SUCCESS
 
     def train(self, eta="auto", alpha="auto", num_pass=10):
         """
@@ -548,7 +502,7 @@ if __name__ == "__main__":
         topic_model.create_corpus_from_test_data()
 
         # topic_model.train(num_pass=1)
-        topic_model.train_mallet()
+        topic_model.train()
         topic_model.calc_coherence()
 
         print(topic_model.lda.get_document_topics(common_corpus[0]))
