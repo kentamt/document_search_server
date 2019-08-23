@@ -19,8 +19,30 @@ app = flask.Flask(__name__)
 redis = Redis(host='redis', port=6379)
 
 # Global
-topic_model = None
-df = pd.read_csv("./arxivs_data.csv")
+topic_model = TopicModel()
+df = pd.read_csv("./arxivs_data.csv") # read DB here
+
+pickles = sorted(glob.glob("./topic_model_*.pickle"))
+if len(pickles) != 0: # Read Pickle
+    latest_pickle = pickles[-1]
+    print("[INFO ] Found pickle! Latest pickle is " + latest_pickle)
+
+    with open(latest_pickle, "rb") as f:
+        topic_model = pickle.load(f)
+        topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
+        topic_model.set_topic_distribution_index() # TODO: consider where this function should be called
+        print("[INFO ]Load topic model from " + latest_pickle)
+else:
+    # init model and data
+    topic_model = TopicModel()
+    topic_model.load_nltk_data()
+    topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
+
+    # read data from df
+    topic_model.create_corpus_from_df(df)        
+
+# --------------------------
+
 
 @app.errorhandler(404)
 @app.errorhandler(400)
@@ -177,10 +199,20 @@ def model_train():
         elif ret == Result.NO_NUM_TOPICS: # never, but just in case
             flask.abort(500, {"error" : "Number of topics must be set"})
             
-        elif ret == Result.SUCCESS:
-            # Save pickle
-            with open("./topic_model.pickle", "wb") as f:
+        elif ret == Result.SUCCESS: # Save pickle
+            
+            params = topic_model.get_model_info()
+            strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
+            with open("./topic_model_" + strtime + ".pickle", "wb") as f:
                 pickle.dump(topic_model, f)
+
+                # delete old file if there are more than 10 files
+                pickles = sorted(glob.glob("./topic_model_*.pickle"))
+                if len(pickles) > 10:
+                    oldest_pickle = pickles[0]
+                    os.remove(oldest_pickle)
+                    print("Remove old pickle, " + oldest_pickle)
+
         else: # just in case
             flask.abort(500, {"error" : "Something went wrong"})
         
@@ -276,8 +308,17 @@ def add_docs_idx():
             
             if ret == Result.SUCCESS:
                 # Save pickle
-                with open("./topic_model.pickle", "wb") as f:
+                params = topic_model.get_model_info()
+                strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
+                with open("./topic_model_" + strtime + ".pickle", "wb") as f:
                     pickle.dump(topic_model, f)
+
+                    # delete old file if there are more than 10 files
+                    pickles = sorted(glob.glob("./topic_model_*.pickle"))
+                    if len(pickles) > 10:
+                        oldest_pickle = pickles[0]
+                        os.remove(oldest_pickle)
+                        print("Remove old pickle, " + oldest_pickle)
 
             elif ret == Result.SAME_DOC:
                 flask.abort(400, {"error" : "The document index has already been used."})
@@ -312,8 +353,17 @@ def add_docs():
             
             if ret == Result.SUCCESS:
                 # Save pickle
-                with open("./topic_model.pickle", "wb") as f:
+                params = topic_model.get_model_info()
+                strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
+                with open("./topic_model_" + strtime + ".pickle", "wb") as f:
                     pickle.dump(topic_model, f)
+
+                    # delete old file if there are more than 10 files
+                    pickles = sorted(glob.glob("./topic_model_*.pickle"))
+                    if len(pickles) > 10:
+                        oldest_pickle = pickles[0]
+                        os.remove(oldest_pickle)
+                        print("Remove old pickle, " + oldest_pickle)
 
             elif ret == Result.SAME_DOC:
                 flask.abort(400, {"error" : "The document index has already been used."})
