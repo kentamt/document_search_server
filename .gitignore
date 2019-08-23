@@ -11,3 +11,4 @@ appendonly.aof
 *eipp.log.xz
 redis/
 APIDOC.pdf
+!.gitkeep
