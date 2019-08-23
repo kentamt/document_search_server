@@ -21,13 +21,13 @@ app = flask.Flask(__name__)
 
 # Global variables
 topic_model = TopicModel()
-df = pd.read_csv("./arxivs_data.csv") # For debug
+df = pd.read_csv("./data/test_data.csv") # For debug
 
 # Initialize corpus from pickle or csv
 
-FILE_NAME = "./arxivs_data.csv"
-CHUNK_SIZE = 1000
-NUM_MAX_DOCS = 3000
+FILE_NAME = "./data/test_data.csv"
+CHUNK_SIZE = 100
+NUM_MAX_DOCS = 300
 
 pickles = sorted(glob.glob("./topic_model_*.pickle"))
 if len(pickles) != 0:
