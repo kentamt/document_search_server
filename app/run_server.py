@@ -54,12 +54,30 @@ def error_handler(error):
      Description
       - abort handler
     '''
-    response = flask.jsonify(
-    {
-        "error": error.description['error']
-    })
+    try:
+        response = flask.jsonify(
+            {
+            "error": error.description['error']
+            }
+        )
 
-    return response, error.code
+        return response, error.code
+    except: # for default 500 
+        response = flask.jsonify(
+        {
+            "error": "Not found"
+        }
+    )
+        return response, 404
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    response = flask.jsonify(
+        {
+            "error": "Invalid method."
+        }
+    )
+    return response, 405
 
 @app.route('/')
 def hello():
