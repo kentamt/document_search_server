@@ -6,11 +6,3 @@ app:
   volumes:
     - ./app:/app
     - ./log:/var/log
-  links:
-  - "redis"
-redis:
-  image: "redis:3"
-  container_name: "redis"
-  volumes:
-    - "$PWD/redis:/data"
-  command: redis-server --appendonly yes
