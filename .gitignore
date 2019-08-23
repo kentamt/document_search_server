@@ -12,3 +12,4 @@ appendonly.aof
 redis/
 APIDOC.pdf
 !.gitkeep
+topic_model_*
