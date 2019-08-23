@@ -176,6 +176,37 @@ class TopicModel:
         self.num_docs = num_docs
         self.doc_ids = [e for e in df.loc[0:num_docs].index]
 
+    def create_corpus_from_csv(self, filename, chunksize=10, num_docs=30):
+        """
+        read csv file 
+        """
+
+        reader = pd.read_csv(filename, chunksize=chunksize)
+        texts = []
+        doc_ids = []
+        count = 0        
+        for df in reader:
+            docs = [e for e in df["abstract"]] # df has "abstract" column
+            doc_ids.extend([e for e in df.index])
+            texts.extend([self._preprocess(doc) for doc in docs]) # remove stop words and lemmatization 
+            count = count + chunksize
+            if count >= num_docs:
+                print("[INFO ]Reach max num docs")
+                break
+        
+        self.texts = texts # NOTE: for calc coherence
+        self.doc_ids = doc_ids
+        print("[INFO ] len of texts: " + str(len(texts)))        
+        
+        # Create new dictionary
+        print("[INFO ] create fictionary")
+        self.dictionary = self.update_dictionary(texts)
+
+        print("[INFO ] create corpus")
+        self.corpuses = [self.dictionary.doc2bow(text) for text in texts]
+        self.trained_flags = [False] * num_docs
+        self.num_docs = num_docs
+
     def create_corpus_from_test_data(self):
         self.texts = common_texts
         self.corpuses = common_corpus
