@@ -1,16 +1,17 @@
+# built-in
 import sys
 import os
 import fcntl
 import time
 import glob
 import pickle
-from collections import deque
 
+# 3rd party
 import flask
-import numpy as np
 import pandas as pd
 from redis import Redis
 
+# local 
 from topic_model import TopicModel
 from error_definition import Result
 
@@ -19,24 +20,24 @@ from error_definition import Result
 app = flask.Flask(__name__)
 redis = Redis(host='redis', port=6379)
 
-# Global
+# Global variables
 topic_model = TopicModel()
 df = pd.read_csv("./arxivs_data.csv") # read DB here
 
+# Initialize corpus from pickle or csv
 pickles = sorted(glob.glob("./topic_model_*.pickle"))
-if len(pickles) != 0: # Read Pickle
+if len(pickles) != 0:
     latest_pickle = pickles[-1]
     print("[INFO ] Found pickle! Latest pickle is " + latest_pickle)
 
     with open(latest_pickle, "rb") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         topic_model = pickle.load(f)
-        topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
-        topic_model.set_topic_distribution_index() # TODO: consider where this function should be called
+        topic_model.load_nltk_data()
+        topic_model.set_topic_distribution_index()# TODO: consider where this function should be called
         print("[INFO ]Load topic model from " + latest_pickle)
 else:
-    # init model and data
-    topic_model = TopicModel()
+    print("[INFO ] Read data from csv")
     topic_model.load_nltk_data()
     topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
 
