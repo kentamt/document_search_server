@@ -9,7 +9,6 @@ import pickle
 # 3rd party
 import flask
 import pandas as pd
-from redis import Redis
 
 # local 
 from topic_model import TopicModel
@@ -18,7 +17,6 @@ from error_definition import Result
 
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
-redis = Redis(host='redis', port=6379)
 
 # Global variables
 topic_model = TopicModel()
