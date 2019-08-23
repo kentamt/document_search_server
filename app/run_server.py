@@ -1,5 +1,6 @@
 import sys
 import os
+import fcntl
 import time
 import glob
 import pickle
@@ -28,6 +29,7 @@ if len(pickles) != 0: # Read Pickle
     print("[INFO ] Found pickle! Latest pickle is " + latest_pickle)
 
     with open(latest_pickle, "rb") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
         topic_model = pickle.load(f)
         topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
         topic_model.set_topic_distribution_index() # TODO: consider where this function should be called
@@ -105,16 +107,17 @@ def save_model():
     strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
     try:
         with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
             pickle.dump(topic_model, f)
-            
-            # delete old file if there are more than 10 files
-            pickles = sorted(glob.glob("./topic_model_*.pickle"))
-            if len(pickles) > 10:
-                oldest_pickle = pickles[0]
-                os.remove(oldest_pickle)
-                print("Remove old pickle, " + oldest_pickle)
 
-            response["status_code"] = 200
+        # delete old file if there are more than 10 files
+        pickles = sorted(glob.glob("./topic_model_*.pickle"))
+        if len(pickles) > 10:
+            oldest_pickle = pickles[0]
+            os.remove(oldest_pickle)
+            print("Remove old pickle, " + oldest_pickle)
+
+        response["status_code"] = 200
             
         print("Save topic model as pickle")
         return flask.jsonify(response)
@@ -140,7 +143,8 @@ def load_model():
         pickles = sorted(glob.glob("./topic_model_*.pickle"))
         latest_pickle = pickles[-1]
 
-        with open(latest_pickle, "rb") as f:        
+        with open(latest_pickle, "rb") as f: 
+            fcntl.flock(f, fcntl.LOCK_EX)       
             topic_model = pickle.load(f)
             topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
             topic_model.set_topic_distribution_index() # TODO: consider where this function should be called
@@ -204,14 +208,15 @@ def model_train():
             params = topic_model.get_model_info()
             strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
             with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+                fcntl.flock(f, fcntl.LOCK_EX)
                 pickle.dump(topic_model, f)
 
-                # delete old file if there are more than 10 files
-                pickles = sorted(glob.glob("./topic_model_*.pickle"))
-                if len(pickles) > 10:
-                    oldest_pickle = pickles[0]
-                    os.remove(oldest_pickle)
-                    print("Remove old pickle, " + oldest_pickle)
+            # delete old file if there are more than 10 files
+            pickles = sorted(glob.glob("./topic_model_*.pickle"))
+            if len(pickles) > 10:
+                oldest_pickle = pickles[0]
+                os.remove(oldest_pickle)
+                print("Remove old pickle, " + oldest_pickle)
 
         else: # just in case
             flask.abort(500, {"error" : "Something went wrong"})
@@ -311,14 +316,15 @@ def add_docs_idx():
                 params = topic_model.get_model_info()
                 strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
                 with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+                    fcntl.flock(f, fcntl.LOCK_EX)
                     pickle.dump(topic_model, f)
 
-                    # delete old file if there are more than 10 files
-                    pickles = sorted(glob.glob("./topic_model_*.pickle"))
-                    if len(pickles) > 10:
-                        oldest_pickle = pickles[0]
-                        os.remove(oldest_pickle)
-                        print("Remove old pickle, " + oldest_pickle)
+                # delete old file if there are more than 10 files
+                pickles = sorted(glob.glob("./topic_model_*.pickle"))
+                if len(pickles) > 10:
+                    oldest_pickle = pickles[0]
+                    os.remove(oldest_pickle)
+                    print("Remove old pickle, " + oldest_pickle)
 
             elif ret == Result.SAME_DOC:
                 flask.abort(400, {"error" : "The document index has already been used."})
@@ -356,14 +362,15 @@ def add_docs():
                 params = topic_model.get_model_info()
                 strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
                 with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+                    fcntl.flock(f, fcntl.LOCK_EX)
                     pickle.dump(topic_model, f)
 
-                    # delete old file if there are more than 10 files
-                    pickles = sorted(glob.glob("./topic_model_*.pickle"))
-                    if len(pickles) > 10:
-                        oldest_pickle = pickles[0]
-                        os.remove(oldest_pickle)
-                        print("Remove old pickle, " + oldest_pickle)
+                # delete old file if there are more than 10 files
+                pickles = sorted(glob.glob("./topic_model_*.pickle"))
+                if len(pickles) > 10:
+                    oldest_pickle = pickles[0]
+                    os.remove(oldest_pickle)
+                    print("Remove old pickle, " + oldest_pickle)
 
             elif ret == Result.SAME_DOC:
                 flask.abort(400, {"error" : "The document index has already been used."})
