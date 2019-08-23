@@ -24,9 +24,9 @@ df = pd.read_csv("./arxivs_data.csv") # For debug
 
 # Initialize corpus from pickle or csv
 
-FILE_NAME = "./arxivs_data_large.csv"
-CHUNK_SIZE = 10
-NUM_MAX_DOCS = 100
+FILE_NAME = "./arxivs_data.csv"
+CHUNK_SIZE = 1000
+NUM_MAX_DOCS = 3000
 
 pickles = sorted(glob.glob("./topic_model_*.pickle"))
 if len(pickles) != 0:
