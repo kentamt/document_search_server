@@ -24,9 +24,9 @@ df = pd.read_csv("./arxivs_data.csv") # For debug
 
 # Initialize corpus from pickle or csv
 
-FILE_NAME = "./arxivs_data.csv"
-CHUNK_SIZE = 1000
-NUM_MAX_DOCS = 3000
+FILE_NAME = "./arxivs_data_large.csv"
+CHUNK_SIZE = 10
+NUM_MAX_DOCS = 100
 
 pickles = sorted(glob.glob("./topic_model_*.pickle"))
 if len(pickles) != 0:
@@ -378,22 +378,25 @@ def add_docs():
             # read document from json
             doc = flask.request.get_json().get("doc")
             doc_idx = flask.request.get_json().get("idx")
+
             ret = topic_model.add_doc(doc, idx=doc_idx)
             
             if ret == Result.SUCCESS:
                 # Save pickle
                 params = topic_model.get_model_info()
                 strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
-                with open("./topic_model_" + strtime + ".pickle", "wb") as f:
-                    fcntl.flock(f, fcntl.LOCK_EX)
-                    pickle.dump(topic_model, f)
 
-                # delete old file if there are more than 10 files
-                pickles = sorted(glob.glob("./topic_model_*.pickle"))
-                if len(pickles) > 10:
-                    oldest_pickle = pickles[0]
-                    os.remove(oldest_pickle)
-                    print("Remove old pickle, " + oldest_pickle)
+                # Too slow
+                # with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+                #     fcntl.flock(f, fcntl.LOCK_EX)
+                #     pickle.dump(topic_model, f)
+
+                # # delete old file if there are more than 10 files
+                # pickles = sorted(glob.glob("./topic_model_*.pickle"))
+                # if len(pickles) > 10:
+                #     oldest_pickle = pickles[0]
+                #     os.remove(oldest_pickle)
+                #     print("Remove old pickle, " + oldest_pickle)
 
             elif ret == Result.SAME_DOC:
                 flask.abort(400, {"error" : "The document index has already been used."})
@@ -409,3 +412,4 @@ if __name__ == "__main__":
 
     print(" * Flask starting server...")
     app.run()
+    print("End of the program.")

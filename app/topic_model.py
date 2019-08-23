@@ -501,12 +501,11 @@ if __name__ == "__main__":
         # topic_model.create_corpus_from_df(df)
         topic_model.create_corpus_from_test_data()
 
-        # topic_model.train(num_pass=1)
         topic_model.train()
         topic_model.calc_coherence()
 
         print(topic_model.lda.get_document_topics(common_corpus[0]))
-        # 
+
 
         with open("./topic_model.pickle", "wb") as f:
              pickle.dump(topic_model, f)
