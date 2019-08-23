@@ -1,6 +1,7 @@
 # built-in
 import sys
 import os
+import signal
 import fcntl
 import time
 import glob
@@ -47,6 +48,29 @@ else:
     # read data from df
     # topic_model.create_corpus_from_df(df)        
     topic_model.create_corpus_from_csv(FILE_NAME, chunksize=CHUNK_SIZE, num_docs=NUM_MAX_DOCS)
+
+
+def sigterm_handler(num, frame):
+    print("[INFO ]sigterm_handler is called!")
+
+    # Save pickle
+    params = topic_model.get_model_info()
+    if params["date"] is not None:
+        strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S') 
+        with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            pickle.dump(topic_model, f)
+            print("[INFO ] Save pickle.")
+        # delete old file if there are more than 10 files
+        pickles = sorted(glob.glob("./topic_model_*.pickle"))
+        if len(pickles) > 10:
+            oldest_pickle = pickles[0]
+            os.remove(oldest_pickle)
+            print("[INFO ] Remove old pickle, " + oldest_pickle)
+    else:
+        print("[INFO ] No model to save.")
+
+    sys.exit(0)   
 
 # ----------------------------------------------------------
 
@@ -382,9 +406,10 @@ def add_docs():
             ret = topic_model.add_doc(doc, idx=doc_idx)
             
             if ret == Result.SUCCESS:
+                pass
                 # Save pickle
-                params = topic_model.get_model_info()
-                strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
+                # params = topic_model.get_model_info()
+                # strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
 
                 # Too slow
                 # with open("./topic_model_" + strtime + ".pickle", "wb") as f:
@@ -410,6 +435,26 @@ def add_docs():
 
 if __name__ == "__main__":
 
+    signal.signal(signal.SIGTERM, sigterm_handler)
     print(" * Flask starting server...")
     app.run()
+
+    # Save pickle
+    params = topic_model.get_model_info()
+    if params["date"] is not None:
+        strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S') 
+        with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            pickle.dump(topic_model, f)
+            print("[INFO ] Save pickle.")
+        # delete old file if there are more than 10 files
+        pickles = sorted(glob.glob("./topic_model_*.pickle"))
+        if len(pickles) > 10:
+            oldest_pickle = pickles[0]
+            os.remove(oldest_pickle)
+            print("[INFO ] Remove old pickle, " + oldest_pickle)
+    else:
+        print("[INFO ] No model to save.")
+
+
     print("End of the program.")
