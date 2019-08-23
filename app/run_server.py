@@ -18,13 +18,18 @@ from error_definition import Result
 
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
-redis = Redis(host='redis', port=6379)
+# redis = Redis(host='redis', port=6379) no longer needed
 
 # Global variables
 topic_model = TopicModel()
-df = pd.read_csv("./arxivs_data.csv") # read DB here
+df = pd.read_csv("./arxivs_data.csv") # For debug
 
 # Initialize corpus from pickle or csv
+
+FILE_NAME = "./arxivs_data.csv"
+CHUNK_SIZE = 1000
+NUM_MAX_DOCS = 3000
+
 pickles = sorted(glob.glob("./topic_model_*.pickle"))
 if len(pickles) != 0:
     latest_pickle = pickles[-1]
@@ -42,9 +47,10 @@ else:
     topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
 
     # read data from df
-    topic_model.create_corpus_from_df(df)        
+    # topic_model.create_corpus_from_df(df)        
+    topic_model.create_corpus_from_csv(FILE_NAME, chunksize=CHUNK_SIZE, num_docs=NUM_MAX_DOCS)
 
-# --------------------------
+# ----------------------------------------------------------
 
 
 @app.errorhandler(404)
