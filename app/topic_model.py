@@ -40,52 +40,63 @@ import pyLDAvis.gensim
 # Local
 from error_definition import Result
 
-class TopicModel:
-    
-    def __init__(self, logger_level=logging.INFO):
-
-        # member variables
-        
-        # for better debug
-        self.df = None  # DataFrame for original data ?
-        
-        # data
+class Data:
+    def __init__(self):
         self.corpuses = None
         self.doc_ids = None
         self.trained_flags = None
-        self.train_docs_ids = None
-        self.unknown_docs_ids = None
-        self.liked_doc_ids = None 
-        self.stopwords = None # TODO: install stopwords by nltk 
+        self.num_docs = 0
+        self.wn = None
 
-        # model   
+class Model:
+    def __init__(self):
         self.lda = None
         self.is_model_trained = False
+        self.doc_index_similarity = None  # topic distoribution indexes
+        self.num_topics = None # model parameters
+        self.create_datetime = None
+        self.dictionary = None
+        
+class TopicModel:
 
-        # model parameters
-        self.num_topics = None
+    def __init__(self, logger_level=logging.INFO):
 
-        # model info
-        self.model_create_datetime = None
-        self.num_docs = 0
-
-        # topic distoribution indexes
-        self.doc_index_similarity = None
-
-        # run options
-        self.vis = None
+        print("[INFO ] Init Topic Model Instance.")
+        
+        # data
+        self.data = Data()
+        self.data.corpuses = None
+        self.data.doc_ids = None
+        self.data.trained_flags = None
+        self.data.num_docs = 0
+        self.data.wn = None
+        
+        # model   
+        self.model = Model()
+        self.model.lda = None
+        self.model.is_model_trained = False
+        self.model.doc_index_similarity = None  # topic distoribution indexes
+        self.model.num_topics = None # model parameters
+        self.model.create_datetime = None
+        self.model.dictionary = None
 
         # display training logs
         logging.basicConfig(format='%(message)s', level=logger_level)
         
         # pyLDAvis.enable_notebook()
 
+    def set_model(self, model):
+        self.model = model
+
+    def set_data(self, data):
+        self.data = data
+
     def get_model_info(self):
         try:
             ret = {}
-            ret["num_topics"] = self.num_topics
-            ret["num_docs"] = self.num_docs
-            ret["date"] = self.model_create_datetime
+            ret["num_topics"] = self.model.num_topics
+            ret["num_docs"] = self.data.num_docs
+            ret["date"] = self.model.create_datetime
             # self.perplexity # TODO
             return ret
         except:
@@ -95,56 +106,45 @@ class TopicModel:
         """
         """
 
-        if self.lda is None:
+        if self.model.lda is None:
             return Result.NO_MODEL
 
         # create new id
         if idx is None:
-            idx = np.max(self.doc_ids) + 1            
+            idx = np.max(self.data.doc_ids) + 1            
 
         # check if there is same id
-        if idx in self.doc_ids:
+        if idx in self.data.doc_ids:
             print("[Error] There is the same ID in corpus.")
             return Result.SAME_DOC
 
         else:
             print("Add new document on corpus and topic distoribution indecies.")
             text = self._preprocess(doc)
-            corpus = self.dictionary.doc2bow(text)
+            corpus = self.model.dictionary.doc2bow(text)
             
-            self.texts.append(text)
-            self.corpuses.append(corpus)
-            self.trained_flags.append(False)
-            self.doc_ids.append(idx)
-            self.num_docs += 1
+            self.data.corpuses.append(corpus)
+            self.data.trained_flags.append(False)
+            self.data.doc_ids.append(idx)
+            self.data.num_docs += 1
 
             # push topic_distoribution_index
-            topic_dist = self.lda.get_document_topics([corpus], minimum_probability=0)
+            topic_dist = self.model.lda.get_document_topics([corpus], minimum_probability=0)
 
             # add more documents in corpus
-            self.doc_index_similarity.add_documents(topic_dist)  
+            self.model.doc_index_similarity.add_documents(topic_dist)  
 
             # update current datetime
-            self.model_create_datetime = datetime.now()
+            self.model.create_datetime = datetime.now()
 
             return Result.SUCCESS
 
-    # def add_docs(self, docs):
-    #     """
-    #     """        
-    #     num_docs = len(docs)
-        
-    #     texts = [self._preprocess(doc) for doc in docs] # remove stop words and lemmatization
-    #     self.corpuses.extend([self.dictionary.doc2bow(text) for text in texts])
-    #     self.trained_flags.extend([False] * num_docs)
-
-    #     self.num_docs += num_docs
 
     def corpus_from_doc(self, doc):
         """
         """
         text = self._preprocess(doc)
-        corpus = self.dictionary.doc2bow(text)
+        corpus = self.model.dictionary.doc2bow(text)
         return corpus
 
 
@@ -167,17 +167,16 @@ class TopicModel:
         docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
         print("texts from docs")
         texts = [self._preprocess(doc) for doc in docs] # remove stop words and lemmatization 
-        self.texts = texts # NOTE: for calc coherence
 
         # Create new dictionary
         print("create fictionary")
-        self.dictionary = self.update_dictionary(texts)
+        self.model.dictionary = self.update_dictionary(texts)
 
         print("create corpus")
-        self.corpuses = [self.dictionary.doc2bow(text) for text in texts]
-        self.trained_flags = [False] * num_docs
-        self.num_docs = num_docs
-        self.doc_ids = [e for e in df.loc[0:num_docs].index]
+        self.data.corpuses = [self.model.dictionary.doc2bow(text) for text in texts]
+        self.data.trained_flags = [False] * num_docs
+        self.data.num_docs = num_docs
+        self.data.doc_ids = [e for e in df.loc[0:num_docs].index]
 
     def create_corpus_from_csv(self, filename, chunksize=10, num_docs=30):
         """
@@ -198,27 +197,18 @@ class TopicModel:
                 print("[INFO ] Reach max num docs")
                 break
         
-        self.texts = texts # NOTE: for calc coherence
-        self.doc_ids = doc_ids
+        self.data.doc_ids = doc_ids
         print("[INFO ] len of texts: " + str(len(texts)))        
         
         # Create new dictionary
-        print("[INFO ] create fictionary")
-        self.dictionary = self.update_dictionary(texts)
+        print("[INFO ] create dictionary")
+        self.model.dictionary = self.update_dictionary(texts)
 
         print("[INFO ] create corpus")
-        self.corpuses = [self.dictionary.doc2bow(text) for text in texts]
-        self.trained_flags = [False] * num_docs
-        self.num_docs = num_docs
+        self.data.corpuses = [self.model.dictionary.doc2bow(text) for text in texts]
+        self.data.trained_flags = [False] * num_docs
+        self.data.num_docs = num_docs
 
-    def create_corpus_from_test_data(self):
-        self.texts = common_texts
-        self.corpuses = common_corpus
-        self.dictionary = common_dictionary
-
-        self.num_docs = len(self.corpuses)
-        self.doc_ids = list(range(self.num_docs))
-        self.trained_flags = [False] * self.num_docs
 
     def load_nltk_data(self, should_download=True):
         """
@@ -228,7 +218,7 @@ class TopicModel:
             nltk.download("stopwords") 
             nltk.download('wordnet')
             nltk.download('averaged_perceptron_tagger')
-        self.wn = WordNetLemmatizer()        
+        self.data.wn = WordNetLemmatizer()        
 
     def _simplify(self, penn_tag):
         pre = penn_tag[0]
@@ -248,7 +238,7 @@ class TopicModel:
         """
         stop_words = stopwords.words('english')
         toks = gensim.utils.simple_preprocess(str(text), deacc=True)
-        ret = [self.wn.lemmatize(tok, self._simplify(pos)) for tok, pos in nltk.pos_tag(toks) if tok not in stop_words]
+        ret = [self.data.wn.lemmatize(tok, self._simplify(pos)) for tok, pos in nltk.pos_tag(toks) if tok not in stop_words]
         return ret
 
     def _create_eta(self, priors, etadict, num_topics):
@@ -267,40 +257,32 @@ class TopicModel:
         return eta 
 
     def set_num_topics(self, num_topics):
-        self.num_topics = num_topics
+        self.model.num_topics = num_topics
 
     def calc_perplexity(self):
-        perplexity = np.exp2(-self.lda.log_perplexity(self.corpuses))
+        perplexity = np.exp2(-self.model.lda.log_perplexity(self.data.corpuses))
         return perplexity
-
-    def calc_coherence(self, method="c_v"):
-        """
-        !Caution: it may take a long time
-        """
-        coherence_model_lda = CoherenceModel(model=self.lda, texts=self.texts, dictionary=self.dictionary, coherence=method)
-        coherence_lda = coherence_model_lda.get_coherence()
-        return coherence_lda
 
     def train(self, eta="auto", alpha="auto", num_pass=10):
         """
         """        
 
-        if self.corpuses is None:
+        if self.data.corpuses is None:
             print("corpus does not exist.")
             return Result.NO_CORPUS 
 
-        if self.dictionary is None:
+        if self.model.dictionary is None:
             print("dictionary does not exist.")
             return Result.NO_DICTIONARY
 
-        if self.num_topics is None:
+        if self.model.num_topics is None:
             print("num topics is not difined.")
             return Result.NO_NUM_TOPICS
 
-        self.lda = gensim.models.ldamodel.LdaModel(
-            corpus=self.corpuses,
-            num_topics=self.num_topics,
-            id2word=self.dictionary,
+        self.model.lda = gensim.models.ldamodel.LdaModel(
+            corpus=self.data.corpuses,
+            num_topics=self.model.num_topics,
+            id2word=self.model.dictionary,
             passes=num_pass,
             eta = eta,
             # added
@@ -312,14 +294,14 @@ class TopicModel:
         )
 
         # update flags
-        self.trained_flags = [ True for e in self.trained_flags]
-        self.is_model_trained = True
+        self.data.trained_flags = [ True for e in self.data.trained_flags]
+        self.model.is_model_trained = True
 
         # set all topic distoributions
         self.set_topic_distribution_index()
         
         # update current datetime
-        self.model_create_datetime = datetime.now()
+        self.model.create_datetime = datetime.now()
 
         return Result.SUCCESS
 
@@ -334,18 +316,18 @@ class TopicModel:
         ! Check out the HashDictionary class which uses the "hashing trick" to work around this limitation (but the hashing trick comes with its own caveats).
         """
 
-        new_corpus = [e for f, e in zip(self.trained_flags, self.corpuses) if not f]
+        new_corpus = [e for f, e in zip(self.data.trained_flags, self.data.corpuses) if not f]
 
-        # new_docs = [e for f, e in zip(self.trained_flags, self.docs) if not f]
+        # new_docs = [e for f, e in zip(self.data.trained_flags, self.docs) if not f]
         # for doc in new_docs:
         #     print(doc)
         #     print("----")
         
         # update Model
-        self.lda.update(new_corpus)
+        self.model.lda.update(new_corpus)
 
         # update flags
-        self.trained_flags = [True for e in self.trained_flags]
+        self.data.trained_flags = [True for e in self.data.trained_flags]
         
         # set all topic distoributions
         self.set_topic_distribution_index()
@@ -353,9 +335,9 @@ class TopicModel:
     def vizualize_result(self, figx=30, figy=30):
         plt.figure(figsize=(figx, figy))
 
-        for t in range(self.lda.num_topics):
-            plt.subplot(np.ceil(self.lda.num_topics/2), 2, t+1)
-            x = dict(self.lda.show_topic(t,200))
+        for t in range(self.model.lda.num_topics):
+            plt.subplot(np.ceil(self.model.lda.num_topics/2), 2, t+1)
+            x = dict(self.model.lda.show_topic(t,200))
             im = WordCloud().generate_from_frequencies(x)
             plt.imshow(im)
             plt.axis("off")
@@ -364,72 +346,46 @@ class TopicModel:
 
     def save_lda_vis_as_html(self, method=None):
         if method is None:
-            vis = pyLDAvis.gensim.prepare(self.lda, self.corpuses, self.dictionary, sort_topics=False)
+            vis = pyLDAvis.gensim.prepare(self.model.lda, self.data.corpuses, self.model.dictionary, sort_topics=False)
         else:
-            vis = pyLDAvis.gensim.prepare(self.lda, self.corpuses, self.dictionary, mds=method, sort_topics=False)
+            vis = pyLDAvis.gensim.prepare(self.model.lda, self.data.corpuses, self.model.dictionary, mds=method, sort_topics=False)
         pyLDAvis.save_html(vis, './pyldavis_output.html')
 
     def get_topic_terms(self, topic_id):
-        return self.lda.get_topic_terms(topic_id)
+        return self.model.lda.get_topic_terms(topic_id)
 
     def disp_topic_words(self, topic_id):
-        for t in self.lda.get_topic_terms(topic_id):
-            print(" - {}: {}".format(self.dictionary[t[0]], t[1]))
+        for t in self.model.lda.get_topic_terms(topic_id):
+            print(" - {}: {}".format(self.model.dictionary[t[0]], t[1]))
 
     def calc_topic_distribution_from_doc(self, doc):
         test_corpus = self.corpus_from_doc(doc)
-        return sorted(self.lda.get_document_topics(test_corpus), key=lambda t:t[1], reverse=True)
+        return sorted(self.model.lda.get_document_topics(test_corpus), key=lambda t:t[1], reverse=True)
 
     def calc_topic_distribution_from_corpus(self, corpus):
-        return sorted(self.lda.get_document_topics(corpus), key=lambda t:t[1], reverse=True)
+        return sorted(self.model.lda.get_document_topics(corpus), key=lambda t:t[1], reverse=True)
 
     def disp_topic_distribution(self, doc):
         for t in self.calc_topic_distribution_from_doc(doc):
             print("Topic {}: {}".format(t[0], t[1]))
-
-    def save_model(self, path):
-        print("Not implimented yew")
-        pass 
-
-    def load_model(self, path):
-        print("Not implimented yew")
-        pass 
     
     def set_topic_distribution_index(self):
         """
         """
         self.create_topic_distributions_from_curposes()
         index_tmpfile = get_tmpfile('index')
-        self.doc_index_similarity = similarities.Similarity(index_tmpfile, self.topic_distributions, num_features=len(self.dictionary))
-
-    def set_topic_distribution_matrix(self):
-        """
-        """
-        self.create_topic_distributions_from_curposes()
-        self.doc_mat_similarity = similarities.docsim.MatrixSimilarity(self.topic_distributions)
-
-    def set_topic_distribution_own_matrix(self):
-        # create document index for all topic distribution        
-        # self.topic_distributions = self.lda.get_document_topics(self.corpuses)
-
-        # self.create_topic_distributions_from_curposes()
-        # self.doc_mat_similarity = similarities.docsim.MatrixSimilarity(self.topic_distributions)
-        pass
-    
+        self.model.doc_index_similarity = similarities.Similarity(index_tmpfile, self.topic_distributions, num_features=len(self.model.dictionary))
 
     def create_topic_distributions_from_curposes(self):
         """
         """
-        self.topic_distributions = self.lda.get_document_topics(self.corpuses, minimum_probability=0)
-        # all_topics_csr = gensim.matutils.corpus2csc(self.topic_distributions)
-        # all_topics_numpy = all_topics_csr.T.toarray()
-
+        self.topic_distributions = self.model.lda.get_document_topics(self.data.corpuses, minimum_probability=0)
 
     def get_corpus_from_id(self, idx):
         
         try:
-            target_idx = self.doc_ids.index(idx)
-            ret = self.corpuses[target_idx]
+            target_idx = self.data.doc_ids.index(idx)
+            ret = self.data.corpuses[target_idx]
         except:
             ret = Result.NO_DOCS
 
@@ -437,10 +393,9 @@ class TopicModel:
 
     def recommend_from_id(self, idx, num_similar_docs = 3):
         """
-        TODO: 学習データのIDを指定すると、そのIDを当然推薦してくるので、それを除くこと。
         """ 
         
-        if not self.is_model_trained:
+        if not self.model.is_model_trained:
             return Result.NO_MODEL# -2 # TODO: Define error codes
 
         # get topic distribution 
@@ -452,21 +407,21 @@ class TopicModel:
         topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
 
         # get similarity from all training corpus
-        similar_corpus_id = self.doc_index_similarity[topic_dist]
+        similar_corpus_id = self.model.doc_index_similarity[topic_dist]
 
         # sort ids by similarity
         similar_corpus_id = sorted(enumerate(similar_corpus_id), key=lambda t: t[1], reverse=True) 
         
-        if num_similar_docs > self.num_docs:
-            num_similar_docs = self.num_docs
-            print("[Warn] num similar docs must be less than self.num_docs")
+        if num_similar_docs > self.data.num_docs:
+            num_similar_docs = self.data.num_docs
+            print("[Warn] num similar docs must be less than self.data.num_docs")
         arr_ids = [ e[0] for e in similar_corpus_id[:num_similar_docs]]
-        recommended_docs_ids = [self.doc_ids[e] for e in arr_ids]
+        recommended_docs_ids = [self.data.doc_ids[e] for e in arr_ids]
 
         return recommended_docs_ids
 
     def calc_best_topic_from_id(self, idx):
-        if not self.is_model_trained:
+        if not self.model.is_model_trained:
             return Result.NO_MODEL# -2 # TODO: Define error codes
 
         # get corpus
@@ -502,10 +457,8 @@ if __name__ == "__main__":
         topic_model.set_num_topics(3)
         
         # topic_model.create_corpus_from_df(df)
-        topic_model.create_corpus_from_test_data()
 
         topic_model.train()
-        topic_model.calc_coherence()
 
         print(topic_model.lda.get_document_topics(common_corpus[0]))
 
