@@ -235,19 +235,19 @@ def model_train():
         # error handling
         if ret == Result.NO_CORPUS:
             print("here")
-            flask.abort(500, {"error" : "No corpus"})
+            flask.abort(500, {"error" : "No corpus."})
         
         elif ret == Result.NO_DICTIONARY: # just in case
-            flask.abort(500, {"error" : "No dictionary"})
+            flask.abort(500, {"error" : "No dictionary."})
 
         elif ret == Result.NO_NUM_TOPICS: # just in case
-            flask.abort(500, {"error" : "Number of topics must be set"})
+            flask.abort(500, {"error" : "Number of topics must be set."})
             
         elif ret == Result.SUCCESS: # Save pickle
             save_only_model()
             
         else: # just in case
-            flask.abort(500, {"error" : "Something went wrong"})
+            flask.abort(500, {"error" : "Something went wrong."})
 
     response["message"] = "Success"
     return flask.jsonify(response)
@@ -260,7 +260,7 @@ def model_info():
     """
     global topic_model
     if topic_model is None:
-        flask.abort(404, {"error" : "Topic model has not been created."})
+        flask.abort(404, {"error" : "Topic model is not created."})
 
     response = {}    
 
@@ -270,6 +270,7 @@ def model_info():
         params = topic_model.get_model_info()
         response["num_topics"] = params["num_topics"]# num_topics
         response["num_docs"] = params["num_docs"] # num_docs    
+        response["message"] = "Success"
         
         if params["date"] is None: # not trained yet
             flask.abort(404, {"error" : "Topic model has not been created."})
@@ -287,7 +288,7 @@ def recommend(idx=None):
     global topic_model
 
     if topic_model is None:
-        flask.abort(404, {"error" : "Topic model has not been created."})
+        flask.abort(404, {"error" : "Topic model is not created."})
 
     response = {}    
 
@@ -319,6 +320,7 @@ def recommend(idx=None):
         topic_no = topic_model.calc_best_topic_from_id(idx)
         response["topic"] = topic_no
         response["similar_docs"] = ret    
+        response["message"] = "Success"
 
     return flask.jsonify(response)
 
