@@ -16,6 +16,27 @@ from topic_model import TopicModel
 from error_definition import Result
 
 
+# def save_model_as_pickle():
+
+#     # Save pickle
+#     params = topic_model.get_model_info()
+#     if params["date"] is not None:
+#         strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S') 
+#         with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+#             fcntl.flock(f, fcntl.LOCK_EX)
+#             pickle.dump(topic_model, f)
+#             print("[INFO ] Save pickle.")
+#         # delete old file if there are more than 10 files
+#         pickles = sorted(glob.glob("./topic_model_*.pickle"))
+#         if len(pickles) > 10:
+#             oldest_pickle = pickles[0]
+#             os.remove(oldest_pickle)
+#             print("[INFO ] Remove old pickle, " + oldest_pickle)
+#     else:
+#         print("[INFO ] No model to save.")
+        
+
+
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
 
@@ -72,6 +93,28 @@ def sigterm_handler(num, frame):
 
     sys.exit(0)   
 
+def sigkill_handler(num, frame):
+    print("[INFO ]sigkill_handler is called!")
+
+    # Save pickle
+    params = topic_model.get_model_info()
+    if params["date"] is not None:
+        strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S') 
+        with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            pickle.dump(topic_model, f)
+            print("[INFO ] Save pickle.")
+        # delete old file if there are more than 10 files
+        pickles = sorted(glob.glob("./topic_model_*.pickle"))
+        if len(pickles) > 10:
+            oldest_pickle = pickles[0]
+            os.remove(oldest_pickle)
+            print("[INFO ] Remove old pickle, " + oldest_pickle)
+    else:
+        print("[INFO ] No model to save.")
+
+    sys.exit(0)   
+
 # ----------------------------------------------------------
 
 
@@ -108,99 +151,99 @@ def method_not_allowed(e):
     )
     return response, 405
 
-@app.route('/')
-def hello():
-    return "Hello world", 200
+# @app.route('/')
+# def hello():
+#     return "Hello world", 200
 
-@app.route("/model/init", methods=["GET"])
-def init_model():
-    """
-    TODO: should remove when release
-    """
-    global topic_model
-    global df
+# @app.route("/model/init", methods=["GET"])
+# def init_model():
+#     """
+#     TODO: should remove when release
+#     """
+#     global topic_model
+#     global df
     
-    response = {}    
+#     response = {}    
 
-    try:
-        # init model and data
-        topic_model = TopicModel()
-        topic_model.load_nltk_data()
-        topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
+#     try:
+#         # init model and data
+#         topic_model = TopicModel()
+#         topic_model.load_nltk_data()
+#         topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
 
-        # for debug
-        topic_model.create_corpus_from_df(df)        
-        return flask.jsonify(response)
-    except:
-        flask.abort(500, {"error" : "Something went wrong."})
+#         # for debug
+#         topic_model.create_corpus_from_df(df)        
+#         return flask.jsonify(response)
+#     except:
+#         flask.abort(500, {"error" : "Something went wrong."})
 
 
-@app.route("/model/save", methods=["GET"])
-def save_model():
-    """
-    for better debug
-    """
-    global topic_model
+# @app.route("/model/save", methods=["GET"])
+# def save_model():
+#     """
+#     for better debug
+#     """
+#     global topic_model
 
-    if topic_model is None:
-        flask.abort(404, {"error" : "Topic model has not been created."})
+#     if topic_model is None:
+#         flask.abort(404, {"error" : "Topic model has not been created."})
 
-    response = {
-        "Content-Type": "application/json",
-        "status_code": 999
-    }    
+#     response = {
+#         "Content-Type": "application/json",
+#         "status_code": 999
+#     }    
 
-    params = topic_model.get_model_info()
-    strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
-    try:
-        with open("./topic_model_" + strtime + ".pickle", "wb") as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
-            pickle.dump(topic_model, f)
+#     params = topic_model.get_model_info()
+#     strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
+#     try:
+#         with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+#             fcntl.flock(f, fcntl.LOCK_EX)
+#             pickle.dump(topic_model, f)
 
-        # delete old file if there are more than 10 files
-        pickles = sorted(glob.glob("./topic_model_*.pickle"))
-        if len(pickles) > 10:
-            oldest_pickle = pickles[0]
-            os.remove(oldest_pickle)
-            print("Remove old pickle, " + oldest_pickle)
+#         # delete old file if there are more than 10 files
+#         pickles = sorted(glob.glob("./topic_model_*.pickle"))
+#         if len(pickles) > 10:
+#             oldest_pickle = pickles[0]
+#             os.remove(oldest_pickle)
+#             print("Remove old pickle, " + oldest_pickle)
 
-        response["status_code"] = 200
+#         response["status_code"] = 200
             
-        print("Save topic model as pickle")
-        return flask.jsonify(response)
-    except:
-        flask.abort(500, {"error" : "Something went wrong."})
+#         print("Save topic model as pickle")
+#         return flask.jsonify(response)
+#     except:
+#         flask.abort(500, {"error" : "Something went wrong."})
 
 
-@app.route("/model/load", methods=["GET"])
-def load_model():
-    """
-    for better debug
-    """
-    global topic_model
+# @app.route("/model/load", methods=["GET"])
+# def load_model():
+#     """
+#     for better debug
+#     """
+#     global topic_model
 
-    if topic_model is None:
-        flask.abort(404, {"error" : "Topic model has not been created."})
+#     if topic_model is None:
+#         flask.abort(404, {"error" : "Topic model has not been created."})
 
 
-    response = {}    
-    try:
-        topic_model = None
+#     response = {}    
+#     try:
+#         topic_model = None
 
-        pickles = sorted(glob.glob("./topic_model_*.pickle"))
-        latest_pickle = pickles[-1]
+#         pickles = sorted(glob.glob("./topic_model_*.pickle"))
+#         latest_pickle = pickles[-1]
 
-        with open(latest_pickle, "rb") as f: 
-            fcntl.flock(f, fcntl.LOCK_EX)       
-            topic_model = pickle.load(f)
-            topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
-            topic_model.set_topic_distribution_index() # TODO: consider where this function should be called
-            print("Load topic model from pickle")
+#         with open(latest_pickle, "rb") as f: 
+#             fcntl.flock(f, fcntl.LOCK_EX)       
+#             topic_model = pickle.load(f)
+#             topic_model.load_nltk_data() # TODO: if use pickle, nltk_data dir is not set...
+#             topic_model.set_topic_distribution_index() # TODO: consider where this function should be called
+#             print("Load topic model from pickle")
 
-        return flask.jsonify(response)
+#         return flask.jsonify(response)
 
-    except:
-        flask.abort(500, {"error" : "Something went wrong."})
+#     except:
+#         flask.abort(500, {"error" : "Something went wrong."})
 
 @app.route("/model/train", methods=["POST"])
 def model_train():
@@ -214,12 +257,12 @@ def model_train():
 
     response = {}
 
-    # ensure an feature was properly uploaded to our endpoint
+    # ensure method
     if flask.request.method == "POST":
 
         # default params
-        num_pass = 1
-        num_topics = 5
+        num_pass = 5
+        num_topics = 10
 
         # get params
         try:
@@ -242,12 +285,12 @@ def model_train():
         # error handling
         if ret == Result.NO_CORPUS:
             print("here")
-            flask.abort(500, {"error" : "There is no corpus"})
+            flask.abort(500, {"error" : "No corpus"})
         
-        elif ret == Result.NO_DICTIONARY:
-            flask.abort(500, {"error" : "Dictionary must be set"})
+        elif ret == Result.NO_DICTIONARY: # just in case
+            flask.abort(500, {"error" : "No dictionary"})
 
-        elif ret == Result.NO_NUM_TOPICS: # never, but just in case
+        elif ret == Result.NO_NUM_TOPICS: # just in case
             flask.abort(500, {"error" : "Number of topics must be set"})
             
         elif ret == Result.SUCCESS: # Save pickle
@@ -267,7 +310,8 @@ def model_train():
 
         else: # just in case
             flask.abort(500, {"error" : "Something went wrong"})
-        
+
+    response["message"] = "Success"
     return flask.jsonify(response)
 
 
@@ -282,7 +326,7 @@ def model_info():
 
     response = {}    
 
-    # ensure an feature was properly uploaded to our endpoint
+    # ensure method
     if flask.request.method == "GET":
   
         params = topic_model.get_model_info()
@@ -296,10 +340,11 @@ def model_info():
 
     return flask.jsonify(response)
 
+
 @app.route("/docs/<int:idx>", methods=["GET"])
 def recommend(idx=None):
     """
-    API GET /docs/:idx?num_docs=XX
+    API GET /docs/:idx?num_similar=XX
     """
     global topic_model
 
@@ -307,124 +352,143 @@ def recommend(idx=None):
         flask.abort(404, {"error" : "Topic model has not been created."})
 
     response = {}    
-    # ensure an feature was properly uploaded to our endpoint
+
+    # ensure method
     if flask.request.method == "GET":
-        num_similar_docs = flask.request.args.get("num_docs", 3)
-        ret = topic_model.recommend_from_id(idx, num_similar_docs = int(num_similar_docs))
+
+        filters = flask.request.args.getlist("filter[]")
+        filters = set(filters) # remove overlap
+        filters = [int(e) for e in filters] 
+        num_filters = len(filters)
+        num_similar_docs = int(flask.request.args.get("num_similar", 3))
+
+        # search
+        ret = topic_model.recommend_from_id(idx, num_similar_docs = num_similar_docs + num_filters) # in case result filtered out
 
         if ret == Result.NO_DOCS:
             flask.abort(404, {"error" : "Document is not found."})
 
         if ret == Result.NO_MODEL:
             flask.abort(500, {"error" : "Topic model is not created."})
-        
+
+        # filter
+        ret = [e for e in ret if not e in filters]
+
+        # in case ret is longer than num_similar
+        if len(ret) > num_similar_docs:
+            ret = ret[:num_similar_docs]
+
         topic_no = topic_model.calc_best_topic_from_id(idx)
         response["topic"] = topic_no
         response["similar_docs"] = ret    
 
     return flask.jsonify(response)
 
-@app.route("/docs/add_idx", methods=["POST"])
-def add_docs_idx():
-    """
-    API
-    """
-    global topic_model
+# @app.route("/docs/add_idx", methods=["POST"])
+# def add_docs_idx():
+#     """
+#     API
+#     """
+#     global topic_model
 
-    if topic_model is None:
-        flask.abort(404, {"error" : "Topic model has not been created."})
+#     if topic_model is None:
+#         flask.abort(404, {"error" : "Topic model has not been created."})
 
 
-    response = {}
-    # ensure an feature was properly uploaded to our endpoint
-    if flask.request.method == "POST":
-        if flask.request.get_json().get("doc_idx"):
+#     response = {}
+#     # ensure an feature was properly uploaded to our endpoint
+#     if flask.request.method == "POST":
+#         if flask.request.get_json().get("doc_idx"):
             
-            # read feature from json
-            doc_idx = flask.request.get_json().get("doc_idx")
+#             # read feature from json
+#             doc_idx = flask.request.get_json().get("doc_idx")
 
-            # TODO: shoud remove because of DEBUG
-            start = time.time()
+#             # TODO: shoud remove because of DEBUG
+#             start = time.time()
             
-            try:
-                doc  = df.iloc[doc_idx]["abstract"] # TODO: 0を入力するとエラーにならないが文献もaddされない．確認すること
-            except:
-                print("Out of Bounds or There is no data.")
-                flask.abort(400, {"error" : "Invalid index."}) # TODO: I added new error to let user know this index is out of bound or invalid idx
+#             try:
+#                 doc  = df.iloc[doc_idx]["abstract"] # TODO: 0を入力するとエラーにならないが文献もaddされない．確認すること
+#             except:
+#                 print("Out of Bounds or There is no data.")
+#                 flask.abort(400, {"error" : "Invalid index."}) # TODO: I added new error to let user know this index is out of bound or invalid idx
 
-            print(time.time() - start, end="[sec]\n")
+#             print(time.time() - start, end="[sec]\n")
 
-            start = time.time()
-            ret = topic_model.add_doc(doc, idx=doc_idx)
-            print(time.time() - start, end="[sec]\n")
+#             start = time.time()
+#             ret = topic_model.add_doc(doc, idx=doc_idx)
+#             print(time.time() - start, end="[sec]\n")
             
-            if ret == Result.SUCCESS:
-                # Save pickle
-                params = topic_model.get_model_info()
-                strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
-                with open("./topic_model_" + strtime + ".pickle", "wb") as f:
-                    fcntl.flock(f, fcntl.LOCK_EX)
-                    pickle.dump(topic_model, f)
+#             if ret == Result.SUCCESS:
+#                 # Save pickle
+#                 params = topic_model.get_model_info()
+#                 strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
+#                 with open("./topic_model_" + strtime + ".pickle", "wb") as f:
+#                     fcntl.flock(f, fcntl.LOCK_EX)
+#                     pickle.dump(topic_model, f)
 
-                # delete old file if there are more than 10 files
-                pickles = sorted(glob.glob("./topic_model_*.pickle"))
-                if len(pickles) > 10:
-                    oldest_pickle = pickles[0]
-                    os.remove(oldest_pickle)
-                    print("Remove old pickle, " + oldest_pickle)
+#                 # delete old file if there are more than 10 files
+#                 pickles = sorted(glob.glob("./topic_model_*.pickle"))
+#                 if len(pickles) > 10:
+#                     oldest_pickle = pickles[0]
+#                     os.remove(oldest_pickle)
+#                     print("Remove old pickle, " + oldest_pickle)
 
-            elif ret == Result.SAME_DOC:
-                flask.abort(400, {"error" : "The document index has already been used."})
+#             elif ret == Result.SAME_DOC:
+#                 flask.abort(400, {"error" : "The document index has already been used."})
 
-            else: # just in case
-                flask.abort(500, {"error" : "Something went wrong."})
-        else:
-            flask.abort(500, {"error" : "Invalid parameters."})
+#             else: # just in case
+#                 flask.abort(500, {"error" : "Something went wrong."})
+#         else:
+#             flask.abort(500, {"error" : "Invalid parameters."})
 
-    return flask.jsonify(response)
-
+#     return flask.jsonify(response)
+                
 @app.route("/docs/add", methods=["POST"])
 def add_docs():
     """
-    API
+    | Method | URI          |
+    | ------ | ------------ |
+    | POST   | /docs/add    | 
+
+    | params       |              | example          |
+    | ------       | ------------ | ---------------- |
+    | `doc_id`     | `String`     | `ZZZ000`         | 
+    | `doc_body`   | `String`     | `"Hello World!"` |
+
+    |  status_code  |  response                                        |
+    | ------------- | ------------------------------------------------ |
+    |  200          |  下記参照                                        |
+    |  400          |  `{"error": "The doc_id has already been used"}` |
+    |  500          |  `{"error": "Topic model is not created      "}` |
+    |  500          |  `{"error": "Something went wrong            "}` |
+
     """
     global topic_model
-
     if topic_model is None:
         flask.abort(404, {"error" : "Topic model has not been created."})
+    
+    response = {
+        "message" : "The doc is successfully added."
+    }
 
 
-    response = {}
-    # ensure an feature was properly uploaded to our endpoint
+    # ensure parameters were properly uploaded to our endpoint
     if flask.request.method == "POST":
-        if flask.request.get_json().get("doc") and flask.request.get_json().get("idx"):
+        if flask.request.get_json().get("doc_body") and flask.request.get_json().get("doc_id"):
             
             # read document from json
-            doc = flask.request.get_json().get("doc")
-            doc_idx = flask.request.get_json().get("idx")
-
+            doc_idx = flask.request.get_json().get("doc_id")
+            doc = flask.request.get_json().get("doc_body")
             ret = topic_model.add_doc(doc, idx=doc_idx)
             
             if ret == Result.SUCCESS:
-                pass
-                # Save pickle
-                # params = topic_model.get_model_info()
-                # strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S')
-
-                # Too slow
-                # with open("./topic_model_" + strtime + ".pickle", "wb") as f:
-                #     fcntl.flock(f, fcntl.LOCK_EX)
-                #     pickle.dump(topic_model, f)
-
-                # # delete old file if there are more than 10 files
-                # pickles = sorted(glob.glob("./topic_model_*.pickle"))
-                # if len(pickles) > 10:
-                #     oldest_pickle = pickles[0]
-                #     os.remove(oldest_pickle)
-                #     print("Remove old pickle, " + oldest_pickle)
+                print("[INFO ] The doc is successfully added.")
 
             elif ret == Result.SAME_DOC:
-                flask.abort(400, {"error" : "The document index has already been used."})
+                flask.abort(400, {"error" : "The doc_id has already been used."})
+
+            elif ret == Result.NO_MODEL:
+                flask.abort(500, {"error" : "Topic model is not created."})
 
             else: # just in case
                 flask.abort(500, {"error" : "Something went wrong."})
@@ -435,7 +499,7 @@ def add_docs():
 
 if __name__ == "__main__":
 
-    signal.signal(signal.SIGTERM, sigterm_handler)
+    signal.signal(signal.SIGKILL, sigkill_handler)
     print(" * Flask starting server...")
     app.run()
 

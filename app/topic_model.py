@@ -95,6 +95,9 @@ class TopicModel:
         """
         """
 
+        if self.lda is None:
+            return Result.NO_MODEL
+
         # create new id
         if idx is None:
             idx = np.max(self.doc_ids) + 1            
