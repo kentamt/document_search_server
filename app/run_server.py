@@ -6,6 +6,7 @@ import fcntl
 import time
 import glob
 import pickle
+import atexit
 
 # 3rd party
 import flask
@@ -17,6 +18,7 @@ from error_definition import Result
 
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
+
 
 # Initilize Topic Model
 topic_model = TopicModel()
@@ -55,7 +57,7 @@ if len(data_pickles) != 0:
         topic_model.set_data(data)
 
         # TODO: consider where this function should be called
-        topic_model.load_nltk_data(should_download=False)
+        topic_model.load_nltk_data(should_download=True)
         topic_model.set_topic_distribution_index()
 
         print("[INFO ] Load data from " + latest_data_pickle)
@@ -73,7 +75,7 @@ if len(data_pickles) != 0:
 #         print("[INFO ]Load topic model from " + latest_pickle)
 else:
     print("[INFO ] Read data from csv")
-    topic_model.load_nltk_data(should_download=False)
+    topic_model.load_nltk_data(should_download=True)
     topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
     topic_model.create_corpus_from_csv(FILE_NAME, chunksize=CHUNK_SIZE, num_docs=NUM_MAX_DOCS)
 
@@ -148,17 +150,14 @@ def save_only_data():
             print("[INFO ] Remove old data file, " + oldest_pickle)
 
             
-def sigterm_handler(num, frame):
-    print("[INFO ]sigterm_handler is called!")
+def signal_handler():
+    print("[INFO ]signal handler is called!")
     save_only_model()
     save_only_data()
     sys.exit(0)   
 
-def sigkill_handler(num, frame):
-    print("[INFO ]sigkill_handler is called!")
-    save_only_model()
-    save_only_data()
-    sys.exit(0)   
+# set signal handler
+atexit.register(signal_handler)
 
 # ----------------------------------------------------------
 
