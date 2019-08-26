@@ -2,11 +2,13 @@
 import sys
 import os
 import signal
-import fcntl
+if os.name != 'nt':
+    import fcntl
 import time
 import glob
 import pickle
 import atexit
+import logging
 
 # 3rd party
 import flask
@@ -15,6 +17,9 @@ import pandas as pd
 # local 
 from topic_model import TopicModel
 from error_definition import Result
+
+# display training logs
+logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
@@ -31,31 +36,34 @@ NUM_MAX_DOCS = 300
 model_pickles = sorted(glob.glob("./model_*.pickle"))
 if len(model_pickles) != 0:
     latest_model_pickle = model_pickles[-1]
-    print("[INFO ] Found model pickle! Latest pickle is " + latest_model_pickle)
+    logging.info("[INFO ] Found model pickle! Latest pickle is " + latest_model_pickle)
     with open(latest_model_pickle, "rb") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+        if os.name != 'nt':
+            fcntl.flock(f, fcntl.LOCK_EX)
         model = pickle.load(f)
         topic_model.set_model(model)
-        print("[INFO ] Load topic model from " + latest_model_pickle)
+        logging.info("[INFO ] Load topic model from " + latest_model_pickle)
 else:
-    print("[INFO ] there is no model pickles")
+    logging.info("[INFO ] There is no model pickles")
     
 # load data if there is data pickle.
 data_pickles = sorted(glob.glob("./data_*.pickle"))
 if len(data_pickles) != 0:
     latest_data_pickle = data_pickles[-1]
-    print("[INFO ] Found data pickle! Latest pickle is " + latest_data_pickle)
+    logging.info("[INFO ] Found data pickle! Latest pickle is " + latest_data_pickle)
     with open(latest_data_pickle, "rb") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+        if os.name != 'nt':
+            fcntl.flock(f, fcntl.LOCK_EX)
         data = pickle.load(f)
         topic_model.set_data(data)
         topic_model.set_topic_distribution_index()
-        print("[INFO ] Load data from " + latest_data_pickle)
+        logging.info("[INFO ] Load data from " + latest_data_pickle)
 
 else:
-    print("[INFO ] Read data from csv")
-    topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
+    logging.info("[INFO ] Read data from csv")
+    # topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
     topic_model.create_corpus_from_csv(FILE_NAME, chunksize=CHUNK_SIZE, num_docs=NUM_MAX_DOCS)
+
 
 def save_model():
 
@@ -65,20 +73,21 @@ def save_model():
     params = topic_model.get_model_info()
 
     if params["date"] is None:
-        print("[INFO ] No model to save.")
+        logging.warning("[WARN ] No model to save.")
     else:
         strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S') 
         with open("./topic_model_" + strtime + ".pickle", "wb") as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
+            if os.name != 'nt':
+                fcntl.flock(f, fcntl.LOCK_EX)
             pickle.dump(topic_model, f)
-            print("[INFO ] Save pickle.")
+            logging.info("[INFO ] Save pickle.")
 
         # delete old file if there are more than 10 files
         pickles = sorted(glob.glob("./topic_model_*.pickle"))
         if len(pickles) > 10:
             oldest_pickle = pickles[0]
             os.remove(oldest_pickle)
-            print("[INFO ] Remove old pickle, " + oldest_pickle)
+            logging.warning("[WARN ] Remove old pickle, " + oldest_pickle)
 
 
 def save_only_model():
@@ -89,20 +98,21 @@ def save_only_model():
     params = topic_model.get_model_info()
 
     if params["date"] is None:
-        print("[INFO ] No model to save.")
+        logging.warning("[WARN ] No model to save.")
     else:
         strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S') 
         with open("./model_" + strtime + ".pickle", "wb") as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
+            if os.name != 'nt':
+                fcntl.flock(f, fcntl.LOCK_EX)
             pickle.dump(topic_model.model, f)
-            print("[INFO ] Save model as pickle.")
+            logging.info("[INFO ] Save model as pickle.")
 
         # delete old file if there are more than 10 files
         pickles = sorted(glob.glob("./model_*.pickle"))
         if len(pickles) > 10:
             oldest_pickle = pickles[0]
             os.remove(oldest_pickle)
-            print("[INFO ] Remove old model file, " + oldest_pickle)
+            logging.info("[INFO ] Remove old model file, " + oldest_pickle)
 
 def save_only_data():
 
@@ -112,24 +122,25 @@ def save_only_data():
     params = topic_model.get_model_info()
 
     if params["date"] is None: # TODO: check if data is or not
-        print("[INFO ] No data to save.")
+        logging.warning("[WARN ] No data to save.")
     else:
         strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S') 
         with open("./data_" + strtime + ".pickle", "wb") as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
+            if os.name != 'nt':
+                fcntl.flock(f, fcntl.LOCK_EX)
             pickle.dump(topic_model.data, f)
-            print("[INFO ] Save data as pickle.")
+            logging.info("[INFO ] Save data as pickle.")
 
         # delete old file if there are more than 10 files
         pickles = sorted(glob.glob("./data_*.pickle"))
         if len(pickles) > 10:
             oldest_pickle = pickles[0]
             os.remove(oldest_pickle)
-            print("[INFO ] Remove old data file, " + oldest_pickle)
+            logging.warning("[WARN ] Remove old data file, " + oldest_pickle)
 
             
 def signal_handler():
-    print("[INFO ]signal handler is called!")
+    logging.warn("[WARN ]signal handler is called!")
     save_only_model()
     save_only_data()
     sys.exit(0)   
@@ -196,12 +207,12 @@ def model_train():
             if flask.request.get_json().get("num_pass"):
                 num_pass = flask.request.get_json().get("num_pass")
         except:
-            print("No json args")
+            logging.info("[INFO ] No json args")
         try:
             if flask.request.get_json().get("num_topics"):
                 num_topics = flask.request.get_json().get("num_topics")
         except:
-            print("No json args")
+            logging.info("[INFO ] No json args")
             
         # num topic
         topic_model.set_num_topics(num_topics)
@@ -211,19 +222,23 @@ def model_train():
 
         # error handling
         if ret == Result.NO_CORPUS:
-            print("here")
+            logging.error("[ERROR ] No corpus")
             flask.abort(500, {"error" : "No corpus."})
         
         elif ret == Result.NO_DICTIONARY: # just in case
+            logging.error("[ERROR ] No dictionary")
             flask.abort(500, {"error" : "No dictionary."})
 
         elif ret == Result.NO_NUM_TOPICS: # just in case
+            logging.error("[ERROR ] Number of topics must be set")
             flask.abort(500, {"error" : "Number of topics must be set."})
             
         elif ret == Result.SUCCESS: # Save pickle
+            logging.info("[INFO ] save pickle")
             save_only_model()
             
         else: # just in case
+            logging.error("[ERROR ] Something went wrong")
             flask.abort(500, {"error" : "Something went wrong."})
 
     response["message"] = "Success"
@@ -237,6 +252,7 @@ def model_info():
     """
     global topic_model
     if topic_model is None:
+        logging.error("[ERROR ] Topic model is not created")
         flask.abort(404, {"error" : "Topic model is not created."})
 
     response = {}    
@@ -265,6 +281,7 @@ def recommend(idx=None):
     global topic_model
 
     if topic_model is None:
+        logging.error("[ERROR ] Topic model is not created")
         flask.abort(404, {"error" : "Topic model is not created."})
 
     response = {}    
@@ -282,9 +299,11 @@ def recommend(idx=None):
         ret = topic_model.recommend_from_id(idx, num_similar_docs = num_similar_docs + num_filters) # in case result filtered out
 
         if ret == Result.NO_DOCS:
+            logging.error("[ERROR ] Document is not found")
             flask.abort(404, {"error" : "Document is not found."})
 
         if ret == Result.NO_MODEL:
+            logging.error("[ERROR ] Topic model is not created")
             flask.abort(500, {"error" : "Topic model is not created."})
 
         # filter
@@ -307,6 +326,7 @@ def add_docs():
     """
     global topic_model
     if topic_model is None:
+        logging.error("[ERROR ] Topic model is not created")
         flask.abort(404, {"error" : "Topic model has not been created."})
     
     response = {
@@ -324,18 +344,22 @@ def add_docs():
             ret = topic_model.add_doc(doc, idx=doc_idx)
             
             if ret == Result.SUCCESS:
-                print("[INFO ] The doc is successfully added.")
+                logging.info("[INFO ] The doc is successfully added.")
 
             elif ret == Result.SAME_DOC:
+                logging.error("[ERROR ] The doc_id has already been used")
                 flask.abort(400, {"error" : "The doc_id has already been used."})
 
             elif ret == Result.NO_MODEL:
+                logging.error("[ERROR ] Topic model is not created")
                 flask.abort(500, {"error" : "Topic model is not created."})
 
             else: # just in case
+                logging.error("[ERROR ] Something went wrong")
                 flask.abort(500, {"error" : "Something went wrong."})
 
         else:
+            logging.error("[ERROR ] Invalid parameters")
             flask.abort(500, {"error" : "Invalid parameters."})
 
     return flask.jsonify(response)
@@ -343,8 +367,8 @@ def add_docs():
 if __name__ == "__main__":
 
     # without uwsgi mode.
-    print("[INFO ] * Flask starting server...")
+    logging.info("[INFO ] * Flask starting server...")
     app.run()
     save_only_data()
     save_only_model()
-    print("[INFO ] End of the program.")
+    logging.info("[INFO ] End of the program.")

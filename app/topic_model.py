@@ -59,9 +59,9 @@ class Model:
         
 class TopicModel:
 
-    def __init__(self, logger_level=logging.INFO):
+    def __init__(self):
 
-        print("[INFO ] Init Topic Model Instance.")
+        logging.info("[INFO ] Init Topic Model Instance.")
         
         # data
         self.data = Data()
@@ -80,9 +80,6 @@ class TopicModel:
         self.model.create_datetime = None
         self.model.dictionary = None
 
-        # display training logs
-        logging.basicConfig(format='%(message)s', level=logger_level)
-        
         # pyLDAvis.enable_notebook()
 
     def set_model(self, model):
@@ -115,11 +112,11 @@ class TopicModel:
 
         # check if there is same id
         if idx in self.data.doc_ids:
-            print("[Error] There is the same ID in corpus.")
+            logging.error("[Error] There is the same ID in corpus.")
             return Result.SAME_DOC
 
         else:
-            print("Add new document on corpus and topic distoribution indecies.")
+            logging.info("[INFO ] Add new document on corpus and topic distoribution indecies.")
             text = self._preprocess(doc)
             corpus = self.model.dictionary.doc2bow(text)
             
@@ -163,16 +160,16 @@ class TopicModel:
         function for test
         TODO: use append instead of init list
         """
-        print("docs from df")
+        logging.info("[INFO ] Docs from df")
         docs = [e for e in df.loc[0:num_docs, "abstract"]] # df has "abstract" column
-        print("texts from docs")
+        logging.info("[INFO ] Texts from docs")
         texts = [self._preprocess(doc) for doc in docs] # remove stop words and lemmatization 
 
         # Create new dictionary
-        print("create fictionary")
+        logging.info("[INFO ] Create dictionary")
         self.model.dictionary = self.update_dictionary(texts)
 
-        print("create corpus")
+        logging.info("[INFO ] Create corpus")
         self.data.corpuses = [self.model.dictionary.doc2bow(text) for text in texts]
         self.data.trained_flags = [False] * num_docs
         self.data.num_docs = num_docs
@@ -188,23 +185,23 @@ class TopicModel:
         doc_ids = []
         count = 0        
         for df in reader:
-            print("[INFO ] read " + str(count))
+            logging.info("[INFO ] Read " + str(count))
             docs = [e for e in df["abstract"]] # df has "abstract" column
             doc_ids.extend([e for e in df.index])
             texts.extend([self._preprocess(doc) for doc in docs]) # remove stop words and lemmatization 
             count = count + chunksize
             if count >= num_docs:
-                print("[INFO ] Reach max num docs")
+                logging.info("[INFO ] Reach max num docs")
                 break
         
         self.data.doc_ids = doc_ids
-        print("[INFO ] len of texts: " + str(len(texts)))        
+        logging.info("[INFO ] len of texts: " + str(len(texts)))        
         
         # Create new dictionary
-        print("[INFO ] create dictionary")
+        logging.info("[INFO ] create dictionary")
         self.model.dictionary = self.update_dictionary(texts)
 
-        print("[INFO ] create corpus")
+        logging.info("[INFO ] create corpus")
         self.data.corpuses = [self.model.dictionary.doc2bow(text) for text in texts]
         self.data.trained_flags = [False] * num_docs
         self.data.num_docs = num_docs
@@ -268,15 +265,15 @@ class TopicModel:
         """        
 
         if self.data.corpuses is None:
-            print("corpus does not exist.")
+            logging.error("[ERROR ] Corpus does not exist.")
             return Result.NO_CORPUS 
 
         if self.model.dictionary is None:
-            print("dictionary does not exist.")
+            logging.error("[ERROR ] Dictionary does not exist.")
             return Result.NO_DICTIONARY
 
         if self.model.num_topics is None:
-            print("num topics is not difined.")
+            logging.error("[ERROR ] Num topics is not difined.")
             return Result.NO_NUM_TOPICS
 
         self.model.lda = gensim.models.ldamodel.LdaModel(
@@ -401,7 +398,7 @@ class TopicModel:
         # get topic distribution 
         test_corpus = self.get_corpus_from_id(idx)
         if test_corpus == Result.NO_DOCS:
-            print("Doc does not exist")
+            logging.error("[ERROR ] Doc does not exist")
             return Result.NO_DOCS# -1
 
         topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
@@ -414,7 +411,7 @@ class TopicModel:
         
         if num_similar_docs > self.data.num_docs:
             num_similar_docs = self.data.num_docs
-            print("[Warn] num similar docs must be less than self.data.num_docs")
+            logging.warn("[Warn ] num similar docs must be less than self.data.num_docs")
         arr_ids = [ e[0] for e in similar_corpus_id[:num_similar_docs]]
         recommended_docs_ids = [self.data.doc_ids[e] for e in arr_ids]
 
@@ -427,22 +424,13 @@ class TopicModel:
         # get corpus
         test_corpus = self.get_corpus_from_id(idx)
         if test_corpus == -1:
-            print("Doc does not exist")
+            logging.error("[ERROR ] Doc does not exist")
             return Result.NO_DOCS# -1
 
         # get topic distribution
         topic_dist = self.calc_topic_distribution_from_corpus(test_corpus)
         ret = topic_dist[0][0]
         return ret
-
-
-    def get_unused_texts(self):
-        print("Not implimented yew")
-        pass
-
-    def get_used_texts(self):
-        print("Not implimented yew")
-        pass 
 
 if __name__ == "__main__":
     pass
