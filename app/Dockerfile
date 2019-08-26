@@ -6,6 +6,8 @@ WORKDIR /app
 RUN apt update && apt install -y nginx python-pip rsyslog
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
+RUN python /app/nltk_downloader.py
+
 RUN mv etc/nginx.conf /etc/nginx/nginx.conf
 RUN mv etc/uwsgi.ini /etc/uwsgi.ini
 RUN mv etc/supervisord.conf /etc/supervisord.conf

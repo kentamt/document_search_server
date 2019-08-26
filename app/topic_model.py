@@ -69,7 +69,7 @@ class TopicModel:
         self.data.doc_ids = None
         self.data.trained_flags = None
         self.data.num_docs = 0
-        self.data.wn = None
+        self.data.wn = WordNetLemmatizer()        
         
         # model   
         self.model = Model()
@@ -214,10 +214,10 @@ class TopicModel:
         """
         init nltk data. It should be done when the first time.
         """
-        if should_download:
-            nltk.download("stopwords") 
-            nltk.download('wordnet')
-            nltk.download('averaged_perceptron_tagger')
+        # if should_download:
+        #     nltk.download("stopwords") 
+        #     nltk.download('wordnet')
+        #     nltk.download('averaged_perceptron_tagger')
         self.data.wn = WordNetLemmatizer()        
 
     def _simplify(self, penn_tag):

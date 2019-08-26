@@ -19,7 +19,6 @@ from error_definition import Result
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
 
-
 # Initilize Topic Model
 topic_model = TopicModel()
 
@@ -37,11 +36,6 @@ if len(model_pickles) != 0:
         fcntl.flock(f, fcntl.LOCK_EX)
         model = pickle.load(f)
         topic_model.set_model(model)
-
-        # TODO: consider where this function should be called
-        # topic_model.load_nltk_data(should_download=False)
-        # topic_model.set_topic_distribution_index()
-        
         print("[INFO ] Load topic model from " + latest_model_pickle)
 else:
     print("[INFO ] there is no model pickles")
@@ -55,27 +49,11 @@ if len(data_pickles) != 0:
         fcntl.flock(f, fcntl.LOCK_EX)
         data = pickle.load(f)
         topic_model.set_data(data)
-
-        # TODO: consider where this function should be called
-        topic_model.load_nltk_data(should_download=True)
         topic_model.set_topic_distribution_index()
-
         print("[INFO ] Load data from " + latest_data_pickle)
 
-# pickles = sorted(glob.glob("./topic_model_*.pickle"))
-# if len(pickles) != 0:
-#     latest_pickle = pickles[-1]
-#     print("[INFO ] Found pickle! Latest pickle is " + latest_pickle)
-
-#     with open(latest_pickle, "rb") as f:
-#         fcntl.flock(f, fcntl.LOCK_EX)
-#         topic_model = pickle.load(f)
-#         topic_model.load_nltk_data(should_download=False)
-#         topic_model.set_topic_distribution_index()# TODO: consider where this function should be called
-#         print("[INFO ]Load topic model from " + latest_pickle)
 else:
     print("[INFO ] Read data from csv")
-    topic_model.load_nltk_data(should_download=True)
     topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
     topic_model.create_corpus_from_csv(FILE_NAME, chunksize=CHUNK_SIZE, num_docs=NUM_MAX_DOCS)
 
@@ -160,6 +138,7 @@ def signal_handler():
 atexit.register(signal_handler)
 
 # ----------------------------------------------------------
+print("[INFO ] * Flask starting server...")
 
 @app.errorhandler(404)
 @app.errorhandler(400)
@@ -380,7 +359,7 @@ def add_docs():
 
 if __name__ == "__main__":
 
-    # signal.signal(signal.SIGKILL, sigkill_handler)
+    # without uwsgi mode.
     print("[INFO ] * Flask starting server...")
     app.run()
     save_only_data()
