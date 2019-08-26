@@ -5,7 +5,7 @@ import signal
 if os.name != 'nt':
     import fcntl
 import time
-nimport glob
+import glob
 import pickle
 import atexit
 import logging
@@ -113,7 +113,7 @@ def save_only_data():
 
             
 def signal_handler():
-    logging.warn("[WARN ]signal handler is called!")
+    logging.warning("[WARN ]signal handler is called!")
     save_only_model()
     save_only_data()
     sys.exit(0)   
@@ -306,7 +306,6 @@ def add_docs():
         "message" : "The doc is successfully added."
     }
 
-
     # ensure parameters were properly uploaded to our endpoint
     if flask.request.method == "POST":
         if flask.request.get_json().get("doc_body") and flask.request.get_json().get("doc_id"):
@@ -336,6 +335,13 @@ def add_docs():
             flask.abort(500, {"error" : "Invalid parameters."})
 
     return flask.jsonify(response)
+
+# @app.route("/model/viz", methods=["GET"])
+# def get_viz_html():
+#     """
+#     """
+#     topic_model.save_lda_vis_as_html(filename="./pyldavis_output.html", method="tsne")
+#     return flask.current_app.send_static_file("./pyldavis_output.html")
 
 if __name__ == "__main__":
 
