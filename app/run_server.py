@@ -19,7 +19,7 @@ from topic_model import TopicModel
 from error_definition import Result
 
 # display training logs
-logging.basicConfig(format='%(message)s', level=logging.INFO)
+logging.basicConfig(format='%(message)s', level=logging.WARN)
 
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
