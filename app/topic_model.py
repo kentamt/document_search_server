@@ -9,6 +9,7 @@
 # @copyright Copyright (c) 2019
 # 
 
+# built-in
 import sys
 import time
 from datetime import datetime
@@ -16,6 +17,7 @@ import pickle
 import logging
 from collections import Counter
 
+# 3rd-party
 import numpy as np 
 from matplotlib import pyplot as plt 
 import pandas as pd
@@ -24,7 +26,7 @@ import pandas as pd
 import gensim
 from gensim import similarities     
 from gensim.models import CoherenceModel
-from gensim.test.utils import get_tmpfile,  common_texts, common_dictionary, common_corpus
+from gensim.test.utils import get_tmpfile, common_texts, common_dictionary, common_corpus
 import nltk
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
@@ -33,9 +35,6 @@ from nltk.stem import WordNetLemmatizer
 from wordcloud import WordCloud
 import pyLDAvis
 import pyLDAvis.gensim
-
-# Profiler
-# from line_profiler import LineProfiler
 
 # Local
 from error_definition import Result
@@ -80,8 +79,6 @@ class TopicModel:
         self.model.create_datetime = None
         self.model.dictionary = None
 
-        # pyLDAvis.enable_notebook()
-
     def set_model(self, model):
         self.model = model
 
@@ -94,7 +91,6 @@ class TopicModel:
             ret["num_topics"] = self.model.num_topics
             ret["num_docs"] = self.data.num_docs
             ret["date"] = self.model.create_datetime
-            # self.perplexity # TODO
             return ret
         except:
             return Result.SOMETHING_WRONG
@@ -341,12 +337,12 @@ class TopicModel:
             plt.title("Topic #" + str(t))
         plt.show()
 
-    def save_lda_vis_as_html(self, method=None):
+    def save_lda_vis_as_html(self, filename="./pyldavis_output.html", method=None):
         if method is None:
             vis = pyLDAvis.gensim.prepare(self.model.lda, self.data.corpuses, self.model.dictionary, sort_topics=False)
         else:
             vis = pyLDAvis.gensim.prepare(self.model.lda, self.data.corpuses, self.model.dictionary, mds=method, sort_topics=False)
-        pyLDAvis.save_html(vis, './pyldavis_output.html')
+        pyLDAvis.save_html(vis, filename)
 
     def get_topic_terms(self, topic_id):
         return self.model.lda.get_topic_terms(topic_id)
