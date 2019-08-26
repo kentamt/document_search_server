@@ -5,7 +5,7 @@ import signal
 if os.name != 'nt':
     import fcntl
 import time
-import glob
+nimport glob
 import pickle
 import atexit
 import logging
@@ -19,7 +19,7 @@ from topic_model import TopicModel
 from error_definition import Result
 
 # display training logs
-logging.basicConfig(format='%(message)s', level=logging.WARN)
+logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
@@ -30,7 +30,7 @@ topic_model = TopicModel()
 # Initialize corpus from pickle or csv
 FILE_NAME = "./data/test_data.csv"
 CHUNK_SIZE = 100
-NUM_MAX_DOCS = 300
+NUM_MAX_DOCS = 500
 
 # loda model if there is model pickle
 model_pickles = sorted(glob.glob("./model_*.pickle"))
@@ -61,34 +61,7 @@ if len(data_pickles) != 0:
 
 else:
     logging.info("[INFO ] Read data from csv")
-    # topic_model.set_num_topics(5) # TODO: shoud remove or set num topics with another way
     topic_model.create_corpus_from_csv(FILE_NAME, chunksize=CHUNK_SIZE, num_docs=NUM_MAX_DOCS)
-
-
-def save_model():
-
-    global topic_model
-    
-    # Save pickle
-    params = topic_model.get_model_info()
-
-    if params["date"] is None:
-        logging.warning("[WARN ] No model to save.")
-    else:
-        strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S') 
-        with open("./topic_model_" + strtime + ".pickle", "wb") as f:
-            if os.name != 'nt':
-                fcntl.flock(f, fcntl.LOCK_EX)
-            pickle.dump(topic_model, f)
-            logging.info("[INFO ] Save pickle.")
-
-        # delete old file if there are more than 10 files
-        pickles = sorted(glob.glob("./topic_model_*.pickle"))
-        if len(pickles) > 10:
-            oldest_pickle = pickles[0]
-            os.remove(oldest_pickle)
-            logging.warning("[WARN ] Remove old pickle, " + oldest_pickle)
-
 
 def save_only_model():
 
@@ -121,7 +94,7 @@ def save_only_data():
     # Save pickle
     params = topic_model.get_model_info()
 
-    if params["date"] is None: # TODO: check if data is or not
+    if params["date"] is None:
         logging.warning("[WARN ] No data to save.")
     else:
         strtime = params["date"].strftime('%Y.%m.%d_%H.%M.%S') 
@@ -187,7 +160,6 @@ def method_not_allowed(e):
 def model_train():
     """
     API POST /model/train
-    TODO: arguments
     """
     global topic_model
     if topic_model is None:
