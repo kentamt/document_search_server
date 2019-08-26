@@ -266,7 +266,8 @@ def model_info():
         response["message"] = "Success"
         
         if params["date"] is None: # not trained yet
-            flask.abort(404, {"error" : "Topic model has not been created."})
+            logging.error("[ERROR ] Topic model is not created")
+            flask.abort(404, {"error" : "Topic model is not created."})
         else:
             response["model_create_datetime"] = params["date"].strftime('%Y/%m/%d_%H:%M:%S')
 
