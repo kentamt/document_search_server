@@ -144,10 +144,9 @@ print("[INFO ] * Flask starting server...")
 @app.errorhandler(400)
 @app.errorhandler(500)
 def error_handler(error):
-    '''
-     Description
-      - abort handler
-    '''
+    """
+    abort handler
+    """
     try:
         response = flask.jsonify(
             {
@@ -305,22 +304,6 @@ def recommend(idx=None):
 @app.route("/docs/add", methods=["POST"])
 def add_docs():
     """
-    | Method | URI          |
-    | ------ | ------------ |
-    | POST   | /docs/add    | 
-
-    | params       |              | example          |
-    | ------       | ------------ | ---------------- |
-    | `doc_id`     | `String`     | `ZZZ000`         | 
-    | `doc_body`   | `String`     | `"Hello World!"` |
-
-    |  status_code  |  response                                        |
-    | ------------- | ------------------------------------------------ |
-    |  200          |  下記参照                                        |
-    |  400          |  `{"error": "The doc_id has already been used"}` |
-    |  500          |  `{"error": "Topic model is not created      "}` |
-    |  500          |  `{"error": "Something went wrong            "}` |
-
     """
     global topic_model
     if topic_model is None:
