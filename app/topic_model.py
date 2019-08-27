@@ -183,7 +183,7 @@ class TopicModel:
         for df in reader:
             logging.info("[INFO ] Read " + str(count))
             docs = [e for e in df["abstract"]] # df has "abstract" column
-            doc_ids.extend([e for e in df.index])
+            doc_ids.extend([e for e in df["index"]])
             texts.extend([self._preprocess(doc) for doc in docs]) # remove stop words and lemmatization 
             count = count + chunksize
             if count >= num_docs:
