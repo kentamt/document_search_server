@@ -114,7 +114,7 @@ def save_only_data():
             
 def signal_handler():
     logging.warning("[WARN ]signal handler is called!")
-    save_only_model()
+    # save_only_model()
     save_only_data()
     sys.exit(0)   
 
@@ -344,10 +344,10 @@ def add_docs():
 #     return flask.current_app.send_static_file("./pyldavis_output.html")
 
 if __name__ == "__main__":
-
+    logging.error("[ERROR] use Flask." )
     # without uwsgi mode.
-    logging.info("[INFO ] * Flask starting server...")
-    app.run()
-    save_only_data()
-    save_only_model()
-    logging.info("[INFO ] End of the program.")
+    # logging.info("[INFO ] * Flask starting server...")
+    # app.run()
+    # save_only_data()
+    # save_only_model()
+    # logging.info("[INFO ] End of the program.")
