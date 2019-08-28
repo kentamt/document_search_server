@@ -6,3 +6,8 @@ app:
   volumes:
     - ./app:/app
     - ./log:/var/log
+
+  environment:
+    - FILE_NAME=./data/test_data.csv
+    - CHUNK_SIZE=100
+    - NUM_MAX_DOCS=500

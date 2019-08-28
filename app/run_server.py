@@ -27,10 +27,19 @@ app = flask.Flask(__name__)
 # Initilize Topic Model
 topic_model = TopicModel()
 
-# Initialize corpus from pickle or csv
+# Default value
 FILE_NAME = "./data/test_data.csv"
-CHUNK_SIZE = 100
-NUM_MAX_DOCS = 500
+CHUNK_SIZE = 10000
+NUM_MAX_DOCS = 1000000
+# Read from env
+FILE_NAME = os.environ['FILE_NAME']
+CHUNK_SIZE = int(os.environ['CHUNK_SIZE'])
+NUM_MAX_DOCS = int(os.environ['NUM_MAX_DOCS'])
+
+logging.info("[INFO ] CSV file name : " +  FILE_NAME)
+logging.info("[INFO ] Chunk size : " + str(CHUNK_SIZE))
+logging.info("[INFO ] Max number of documents :  " + str(NUM_MAX_DOCS))
+
 
 # loda model if there is model pickle
 model_pickles = sorted(glob.glob("./model_*.pickle"))
