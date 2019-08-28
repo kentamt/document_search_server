@@ -263,6 +263,7 @@ def recommend(idx=None):
     if flask.request.method == "GET":
 
         filters = flask.request.args.getlist("filter[]")
+        filters.append(idx) # add query itself
         filters = set(filters) # remove overlap
         filters = [int(e) for e in filters] 
         num_filters = len(filters)
