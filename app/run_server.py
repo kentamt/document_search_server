@@ -165,6 +165,14 @@ def method_not_allowed(e):
     )
     return response, 405
 
+@app.route("/debug/doc_ids", methods=["GET"])
+def get_doc_ids():
+    global topic_model
+    doc_ids = topic_model.get_doc_ids()
+    response = {}
+    response["doc_ids"] = doc_ids
+    return flask.jsonify(response)
+
 @app.route("/model/train", methods=["POST"])
 def model_train():
     """

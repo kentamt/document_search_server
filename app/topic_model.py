@@ -95,6 +95,9 @@ class TopicModel:
         except:
             return Result.SOMETHING_WRONG
 
+    def get_doc_ids(self):
+        return self.data.doc_ids
+
     def add_doc(self, doc, idx=None):
         """
         """

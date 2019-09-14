@@ -9,5 +9,5 @@ app:
 
   environment:
     - FILE_NAME=./data/test_data.csv
-    - CHUNK_SIZE=100
-    - NUM_MAX_DOCS=500
+    - CHUNK_SIZE=10
+    - NUM_MAX_DOCS=50
