@@ -173,6 +173,18 @@ def get_doc_ids():
     response["doc_ids"] = doc_ids
     return flask.jsonify(response)
 
+@app.route("/debug/texts", methods=["GET"])
+def get_texts():
+    global topic_model
+    texts = topic_model.get_texts()
+    doc_ids = topic_model.get_doc_ids()
+    for idx, text in zip(doc_ids,texts):
+        print(idx, text)
+    response = {}
+    response["texts"] = texts
+    return flask.jsonify(response)
+
+
 @app.route("/model/train", methods=["POST"])
 def model_train():
     """

@@ -47,6 +47,9 @@ class Data:
         self.num_docs = 0
         self.wn = None
 
+        # DEBUG
+        self.texts = None
+
 class Model:
     def __init__(self):
         self.lda = None
@@ -68,7 +71,10 @@ class TopicModel:
         self.data.doc_ids = None
         self.data.trained_flags = None
         self.data.num_docs = 0
-        self.data.wn = WordNetLemmatizer()        
+        self.data.wn = WordNetLemmatizer()  
+
+        # DEBUG
+        self.texts = None
         
         # model   
         self.model = Model()
@@ -98,6 +104,9 @@ class TopicModel:
     def get_doc_ids(self):
         return self.data.doc_ids
 
+    def get_texts(self):
+        return self.data.texts
+
     def add_doc(self, doc, idx=None):
         """
         """
@@ -123,6 +132,9 @@ class TopicModel:
             self.data.trained_flags.append(False)
             self.data.doc_ids.append(idx)
             self.data.num_docs += 1
+
+            # DEBUG
+            self.data.texts.append(text)
 
             # push topic_distoribution_index
             topic_dist = self.model.lda.get_document_topics([corpus], minimum_probability=0)
@@ -174,6 +186,10 @@ class TopicModel:
         self.data.num_docs = num_docs
         self.data.doc_ids = [e for e in df.loc[0:num_docs].index]
 
+        # DEBUG
+        self.data.texts = texts
+
+
     def create_corpus_from_csv(self, filename, chunksize=10, num_docs=30):
         """
         read csv file 
@@ -204,6 +220,9 @@ class TopicModel:
         self.data.corpuses = [self.model.dictionary.doc2bow(text) for text in texts]
         self.data.trained_flags = [False] * num_docs
         self.data.num_docs = num_docs
+
+        # DEBUG
+        self.data.texts = texts
 
 
     def load_nltk_data(self, should_download=True):
