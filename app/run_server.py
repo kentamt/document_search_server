@@ -18,6 +18,8 @@ import pandas as pd
 from topic_model import TopicModel
 from error_definition import Result
 
+
+
 # display training logs
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
@@ -366,13 +368,17 @@ def add_docs():
 
     return flask.jsonify(response)
 
-# @app.route("/model/viz", methods=["GET"])
-# def get_viz_html():
-#     """
-#     """
-#     topic_model.save_lda_vis_as_html(filename="./pyldavis_output.html", method="tsne")
-#     return flask.current_app.send_static_file("./pyldavis_output.html")
+@app.route("/model/viz", methods=["GET"])
+def get_viz_html():
+     """
+     """
+     topic_model.save_lda_vis_as_html(filename="./pyldavis_output.html", method="tsne")
+     response = {
+        "message" : "Success."
+     }
 
+     return flask.jsonify(response) # flask.current_app.send_static_file("./pyldavis_output.html") # 
+ 
 if __name__ == "__main__":
     logging.error("[ERROR] use Flask." )
     # without uwsgi mode.

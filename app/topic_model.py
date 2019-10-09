@@ -48,7 +48,7 @@ class Data:
         self.wn = None
 
         # DEBUG
-        self.texts = None
+        # self.texts = None
 
 class Model:
     def __init__(self):
@@ -74,7 +74,7 @@ class TopicModel:
         self.data.wn = WordNetLemmatizer()  
 
         # DEBUG
-        self.texts = None
+        # self.texts = None
         
         # model   
         self.model = Model()
@@ -104,8 +104,9 @@ class TopicModel:
     def get_doc_ids(self):
         return self.data.doc_ids
 
-    def get_texts(self):
-        return self.data.texts
+    # DEBUG
+    # def get_texts(self):
+        # return self.data.texts
 
     def add_doc(self, doc, idx=None):
         """
@@ -134,7 +135,7 @@ class TopicModel:
             self.data.num_docs += 1
 
             # DEBUG
-            self.data.texts.append(text)
+            # self.data.texts.append(text)
 
             # push topic_distoribution_index
             topic_dist = self.model.lda.get_document_topics([corpus], minimum_probability=0)
@@ -187,7 +188,7 @@ class TopicModel:
         self.data.doc_ids = [e for e in df.loc[0:num_docs].index]
 
         # DEBUG
-        self.data.texts = texts
+        # self.data.texts = texts
 
 
     def create_corpus_from_csv(self, filename, chunksize=10, num_docs=30):
@@ -222,7 +223,7 @@ class TopicModel:
         self.data.num_docs = num_docs
 
         # DEBUG
-        self.data.texts = texts
+        # self.data.texts = texts
 
 
     def load_nltk_data(self, should_download=True):
@@ -361,9 +362,9 @@ class TopicModel:
 
     def save_lda_vis_as_html(self, filename="./pyldavis_output.html", method=None):
         if method is None:
-            vis = pyLDAvis.gensim.prepare(self.model.lda, self.data.corpuses, self.model.dictionary, sort_topics=False)
+            vis = pyLDAvis.gensim.prepare(self.model.lda, self.data.corpuses, self.model.dictionary, n_jobs=1, sort_topics=False)
         else:
-            vis = pyLDAvis.gensim.prepare(self.model.lda, self.data.corpuses, self.model.dictionary, mds=method, sort_topics=False)
+            vis = pyLDAvis.gensim.prepare(self.model.lda, self.data.corpuses, self.model.dictionary, n_jobs=1, mds=method, sort_topics=False)
         pyLDAvis.save_html(vis, filename)
 
     def get_topic_terms(self, topic_id):
