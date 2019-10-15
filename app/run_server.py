@@ -10,6 +10,8 @@ import pickle
 import atexit
 import logging
 
+import asyncio
+
 # 3rd party
 import flask
 import pandas as pd
@@ -17,7 +19,28 @@ import pandas as pd
 # local 
 from topic_model import TopicModel
 from error_definition import Result
+import threading
 
+
+is_train_running = False
+
+class MyThread(threading.Thread):
+    def __init__(self, num_pass):
+        super(MyThread, self).__init__()
+        self.stop_event = threading.Event()
+        self.num_pass = num_pass
+
+    def stop(self):
+        self.stop_event.set()
+
+    def run(self):
+        global is_train_running
+        try:
+            is_train_running = True
+            topic_model.train(num_pass=self.num_pass)
+        finally:
+            is_train_running = False
+            pass
 
 
 # display training logs
@@ -33,10 +56,11 @@ topic_model = TopicModel()
 FILE_NAME = "./data/test_data.csv"
 CHUNK_SIZE = 10000
 NUM_MAX_DOCS = 1000000
+
 # Read from env
-FILE_NAME = os.environ['FILE_NAME']
-CHUNK_SIZE = int(os.environ['CHUNK_SIZE'])
-NUM_MAX_DOCS = int(os.environ['NUM_MAX_DOCS'])
+# FILE_NAME = os.environ['FILE_NAME']
+# CHUNK_SIZE = int(os.environ['CHUNK_SIZE'])
+# NUM_MAX_DOCS = int(os.environ['NUM_MAX_DOCS'])
 
 logging.info("[INFO ] CSV file name : " +  FILE_NAME)
 logging.info("[INFO ] Chunk size : " + str(CHUNK_SIZE))
@@ -192,14 +216,23 @@ def model_train():
     """
     API POST /model/train
     """
-    global topic_model
+    global topic_model, is_train_running
+    
     if topic_model is None:
         flask.abort(404, {"error" : "Topic model has not been created."})
+
+    # TODO: コーパスなしエラー
+    # TODO: 辞書なしエラー
+    # TODO: トピック数なしエラー
 
     response = {}
 
     # ensure method
     if flask.request.method == "POST":
+
+        if is_train_running:
+            logging.warn("[WARN ] traning is running.")
+            flask.abort(500, {"error" : "Traning is running"})
 
         # default params
         num_pass = 5
@@ -221,28 +254,8 @@ def model_train():
         topic_model.set_num_topics(num_topics)
 
         # train model
-        ret = topic_model.train(num_pass=num_pass)
-
-        # error handling
-        if ret == Result.NO_CORPUS:
-            logging.error("[ERROR ] No corpus")
-            flask.abort(500, {"error" : "No corpus."})
-        
-        elif ret == Result.NO_DICTIONARY: # just in case
-            logging.error("[ERROR ] No dictionary")
-            flask.abort(500, {"error" : "No dictionary."})
-
-        elif ret == Result.NO_NUM_TOPICS: # just in case
-            logging.error("[ERROR ] Number of topics must be set")
-            flask.abort(500, {"error" : "Number of topics must be set."})
-            
-        elif ret == Result.SUCCESS: # Save pickle
-            logging.info("[INFO ] save pickle")
-            save_only_model()
-            
-        else: # just in case
-            logging.error("[ERROR ] Something went wrong")
-            flask.abort(500, {"error" : "Something went wrong."})
+        t = MyThread(num_pass)
+        t.start()
 
     response["message"] = "Success"
     return flask.jsonify(response)
@@ -329,7 +342,12 @@ def recommend(idx=None):
 def add_docs():
     """
     """
-    global topic_model
+    global topic_model, is_train_running
+
+    if is_train_running:
+        logging.warn("[WARN ] traning is running.")
+        flask.abort(500, {"error" : "Traning is running"})
+
     if topic_model is None:
         logging.error("[ERROR ] Topic model is not created")
         flask.abort(404, {"error" : "Topic model has not been created."})
@@ -378,12 +396,12 @@ def get_viz_html():
      }
 
      return flask.jsonify(response) # flask.current_app.send_static_file("./pyldavis_output.html") # 
- 
+
 if __name__ == "__main__":
-    logging.error("[ERROR] use Flask." )
+    # logging.error("[ERROR] use Flask." )
     # without uwsgi mode.
-    # logging.info("[INFO ] * Flask starting server...")
-    # app.run()
+    logging.info("[INFO ] * Flask starting server...")
+    app.run()
     # save_only_data()
     # save_only_model()
-    # logging.info("[INFO ] End of the program.")
+    logging.info("[INFO ] End of the program.")
