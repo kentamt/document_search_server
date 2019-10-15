@@ -13,4 +13,5 @@ redis/
 APIDOC.pdf
 !.gitkeep
 topic_model_*
-.ipynb_checkpoints
+.ipynb_checkpoints*.html
+*.pickle
