@@ -21,28 +21,6 @@ from topic_model import TopicModel
 from error_definition import Result
 import threading
 
-
-is_train_running = False
-
-class MyThread(threading.Thread):
-    def __init__(self, num_pass):
-        super(MyThread, self).__init__()
-        self.stop_event = threading.Event()
-        self.num_pass = num_pass
-
-    def stop(self):
-        self.stop_event.set()
-
-    def run(self):
-        global is_train_running
-        try:
-            is_train_running = True
-            topic_model.train(num_pass=self.num_pass)
-        finally:
-            is_train_running = False
-            pass
-
-
 # display training logs
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
@@ -54,13 +32,13 @@ topic_model = TopicModel()
 
 # Default value
 FILE_NAME = "./data/test_data.csv"
-CHUNK_SIZE = 10000
-NUM_MAX_DOCS = 1000000
+CHUNK_SIZE = 50
+NUM_MAX_DOCS = 400
 
 # Read from env
-# FILE_NAME = os.environ['FILE_NAME']
-# CHUNK_SIZE = int(os.environ['CHUNK_SIZE'])
-# NUM_MAX_DOCS = int(os.environ['NUM_MAX_DOCS'])
+FILE_NAME = os.environ['FILE_NAME']
+CHUNK_SIZE = int(os.environ['CHUNK_SIZE'])
+NUM_MAX_DOCS = int(os.environ['NUM_MAX_DOCS'])
 
 logging.info("[INFO ] CSV file name : " +  FILE_NAME)
 logging.info("[INFO ] Chunk size : " + str(CHUNK_SIZE))
@@ -99,7 +77,9 @@ else:
     topic_model.create_corpus_from_csv(FILE_NAME, chunksize=CHUNK_SIZE, num_docs=NUM_MAX_DOCS)
 
 def save_only_model():
-
+    """ 
+    save 10 latest model data as pickle
+    """
     global topic_model
     
     # Save pickle
@@ -123,7 +103,9 @@ def save_only_model():
             logging.info("[INFO ] Remove old model file, " + oldest_pickle)
 
 def save_only_data():
-
+    """
+    save latest 10 corpus data as picke
+    """
     global topic_model
     
     # Save pickle
@@ -146,8 +128,35 @@ def save_only_data():
             os.remove(oldest_pickle)
             logging.warning("[WARN ] Remove old data file, " + oldest_pickle)
 
+
+is_train_running = False
+class TrainThread(threading.Thread):
+    """
+    Threading class for multi thread training
+    """
+    def __init__(self, num_pass):
+        super(TrainThread, self).__init__()
+        self.stop_event = threading.Event()
+        self.num_pass = num_pass
+
+    def stop(self):
+        self.stop_event.set()
+
+    def run(self):
+        global is_train_running
+        try:
+            is_train_running = True
+            topic_model.train(num_pass=self.num_pass)
+            save_only_model()
+        finally:
+            is_train_running = False
+            logging.info("[INFO ] Finish training.")
+
             
 def signal_handler():
+    """
+    Save data as pickle before shutdown
+    """
     logging.warning("[WARN ]signal handler is called!")
     # save_only_model()
     save_only_data()
@@ -156,7 +165,9 @@ def signal_handler():
 # set signal handler
 atexit.register(signal_handler)
 
-# ----------------------------------------------------------
+# ---------------------------------------------------
+# Flask app
+# ---------------------------------------------------
 print("[INFO ] * Flask starting server...")
 
 @app.errorhandler(404)
@@ -191,26 +202,6 @@ def method_not_allowed(e):
     )
     return response, 405
 
-@app.route("/debug/doc_ids", methods=["GET"])
-def get_doc_ids():
-    global topic_model
-    doc_ids = topic_model.get_doc_ids()
-    response = {}
-    response["doc_ids"] = doc_ids
-    return flask.jsonify(response)
-
-@app.route("/debug/texts", methods=["GET"])
-def get_texts():
-    global topic_model
-    texts = topic_model.get_texts()
-    doc_ids = topic_model.get_doc_ids()
-    for idx, text in zip(doc_ids,texts):
-        print(idx, text)
-    response = {}
-    response["texts"] = texts
-    return flask.jsonify(response)
-
-
 @app.route("/model/train", methods=["POST"])
 def model_train():
     """
@@ -220,12 +211,6 @@ def model_train():
     
     if topic_model is None:
         flask.abort(404, {"error" : "Topic model has not been created."})
-
-    # TODO: コーパスなしエラー
-    # TODO: 辞書なしエラー
-    # TODO: トピック数なしエラー
-
-    response = {}
 
     # ensure method
     if flask.request.method == "POST":
@@ -254,9 +239,10 @@ def model_train():
         topic_model.set_num_topics(num_topics)
 
         # train model
-        t = MyThread(num_pass)
+        t = TrainThread(num_pass)
         t.start()
 
+    response = {}
     response["message"] = "Success"
     return flask.jsonify(response)
 
@@ -341,6 +327,7 @@ def recommend(idx=None):
 @app.route("/docs/add", methods=["POST"])
 def add_docs():
     """
+    API POST /docs/add
     """
     global topic_model, is_train_running
 
@@ -389,6 +376,8 @@ def add_docs():
 @app.route("/model/viz", methods=["GET"])
 def get_viz_html():
      """
+     API GET /model/viz
+     Save result of LDA as HTML
      """
      topic_model.save_lda_vis_as_html(filename="./pyldavis_output.html", method="tsne")
      response = {
@@ -398,10 +387,11 @@ def get_viz_html():
      return flask.jsonify(response) # flask.current_app.send_static_file("./pyldavis_output.html") # 
 
 if __name__ == "__main__":
-    # logging.error("[ERROR] use Flask." )
+    logging.error("[ERROR] use Flask." )
     # without uwsgi mode.
-    logging.info("[INFO ] * Flask starting server...")
-    app.run()
+    # logging.info("[INFO ] * Flask starting server...")
+    # app.run()
     # save_only_data()
     # save_only_model()
-    logging.info("[INFO ] End of the program.")
+    # logging.info("[INFO ] End of the program.")
+    
