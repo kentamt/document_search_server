@@ -143,7 +143,7 @@ class TrainThread(threading.Thread):
         self.stop_event.set()
 
     def run(self):
-        global is_train_running
+        global is_train_running, topic_model
         try:
             is_train_running = True
             topic_model.train(num_pass=self.num_pass)
