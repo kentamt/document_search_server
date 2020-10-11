@@ -1,8 +1,7 @@
-# Sazanami
+# Similar Document serch
 
 Similar Document search web API tool.
 ![fish](./fish.jpg)
-
 
 ## Environment
 - python 3.5.4 
