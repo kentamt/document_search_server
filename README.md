@@ -1,4 +1,4 @@
-# Similar Document serch
+# Similar Document search
 
 Similar Document search web API tool.
 
