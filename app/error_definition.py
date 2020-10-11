@@ -3,7 +3,6 @@
 # 
 # @brief 
 # 
-# @author Kenta Matsui
 # @version 0.9.0
 # @date 14-Aug. 2019
 # @copyright Copyright (c) 2019
