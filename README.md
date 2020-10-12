@@ -22,6 +22,18 @@ $ docker-compose up
 run_server.py
 
 ```python
+# Default value
+FILE_NAME = "./data/test_data.csv"
+CHUNK_SIZE = 50
+NUM_MAX_DOCS = 400
+
+# Read from env
+# FILE_NAME = os.environ['FILE_NAME']
+# CHUNK_SIZE = int(os.environ['CHUNK_SIZE'])
+# NUM_MAX_DOCS = int(os.environ['NUM_MAX_DOCS'])
+```
+
+```python
 if __name__ == "__main__":
     # logging.error("[ERROR] use Flask." )
 
