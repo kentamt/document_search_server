@@ -19,7 +19,19 @@ $ docker-compose up
 
 ## Web API using Flask
 
-For example:
+run_server.py
+
+```python
+if __name__ == "__main__":
+    # logging.error("[ERROR] use Flask." )
+
+    # without uwsgi mode.
+    app.run()
+    save_only_data()
+    save_only_model()
+    logging.info("[INFO ] End of the program.")
+```
+then
 
 ```
 $ python run_server.py
