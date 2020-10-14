@@ -55,3 +55,6 @@ This returns json format like below.
 ```
 {"doc_idx": [60, 35, 81], "topic_id": 1}
 ```
+
+## Test
+Swagger UI http://localhost:8001
