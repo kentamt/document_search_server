@@ -11,3 +11,13 @@ app:
     - FILE_NAME=./data/test_data.csv
     - CHUNK_SIZE=10
     - NUM_MAX_DOCS=50
+
+swagger-ui:
+  image: swaggerapi/swagger-ui
+  container_name: swagger-ui
+  ports:
+    - "8001:8080"
+  volumes:
+    - ./swagger:/usr/share/nginx/html/swagger
+  environment:
+    API_URL: ./swagger/openapi.yml

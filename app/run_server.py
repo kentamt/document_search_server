@@ -14,6 +14,7 @@ import asyncio
 
 # 3rd party
 import flask
+from flask_cors import CORS
 import pandas as pd
 
 # local 
@@ -26,6 +27,7 @@ logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 # initialize our Flask application and pre-trained model
 app = flask.Flask(__name__)
+CORS(app)
 
 # Initilize Topic Model
 topic_model = TopicModel()

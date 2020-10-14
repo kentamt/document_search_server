@@ -3,6 +3,7 @@ flask
 redis
 uwsgi
 supervisor 
+flask-cors
 ###### Requirements with Version Specifiers ######`
 numpy==1.14.5
 matplotlib==3.0.3
